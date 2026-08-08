@@ -1,10 +1,12 @@
 import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
 import { supabase } from './supabaseClient.js';
+import jsPDF from 'jspdf';
+import autoTable from 'jspdf-autotable';
 import {
   Users, Clock, Coins, Calendar as CalendarIcon, Plus, X, Pencil, Trash2,
   LogOut, FileText, Printer, ChevronLeft, ChevronRight, Phone, Briefcase,
   Camera, ArrowLeft, Check, AlertTriangle, UserPlus, Crown, ShieldCheck, ShieldX,
-  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, LayoutDashboard, Headphones
+  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, LayoutDashboard, Headphones, Share2
 } from 'lucide-react';
 
 /* ============================== HELPERS ============================== */
@@ -56,6 +58,80 @@ async function resizeImage(file, maxW = 180) {
     reader.onerror = reject;
     reader.readAsDataURL(file);
   });
+}
+
+/* ---------- Relatório em PDF + compartilhamento no WhatsApp ---------- */
+
+const slugify = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
+
+const soDigitos = (tel) => (tel || '').replace(/\D/g, '');
+
+function buildRelatorioPdf(linha, periodoLabel) {
+  const doc = new jsPDF();
+  doc.setFontSize(16);
+  doc.text('Construções Paulo C', 14, 18);
+  doc.setFontSize(11);
+  doc.text('Relatório de Horas', 14, 26);
+  doc.setFontSize(9);
+  doc.setTextColor(90, 90, 90);
+  doc.text(`Funcionário: ${linha.funcionario.nome}`, 14, 35);
+  doc.text(`Período: ${periodoLabel}`, 14, 41);
+  doc.text(`Valor/hora: ${euro(linha.valorHora)}`, 14, 47);
+
+  autoTable(doc, {
+    startY: 54,
+    head: [['Data', 'Horas', 'Observação', 'Valor']],
+    body: linha.entries.map((e) => [
+      e.data.split('-').reverse().join('/'),
+      `${e.horas}h`,
+      e.observacao || '-',
+      euro(e.horas * linha.valorHora),
+    ]),
+    styles: { fontSize: 8, textColor: [26, 36, 48] },
+    headStyles: { fillColor: [22, 40, 63], textColor: 255 },
+    alternateRowStyles: { fillColor: [244, 246, 250] },
+  });
+
+  const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 60;
+  doc.setFontSize(10);
+  doc.setTextColor(20, 20, 20);
+  doc.text(`Total de horas: ${linha.totalHoras.toFixed(2).replace('.00', '')}`, 14, finalY + 10);
+  doc.setTextColor(166, 66, 15);
+  doc.text(`Total a receber: ${euro(linha.totalReceber)}`, 14, finalY + 17);
+
+  return doc;
+}
+
+async function compartilharRelatorioWhatsapp(linha, periodoLabel, avisar) {
+  const numero = soDigitos(linha.funcionario.telefone);
+  if (!numero || numero.length < 8) {
+    avisar(`Cadastre o telefone de ${linha.funcionario.nome} (com o código do país, ex: 5565912345678) para poder compartilhar por WhatsApp.`);
+    return;
+  }
+
+  const doc = buildRelatorioPdf(linha, periodoLabel);
+  const fileName = `relatorio-${slugify(linha.funcionario.nome)}.pdf`;
+  const blob = doc.output('blob');
+
+  try {
+    const file = new File([blob], fileName, { type: 'application/pdf' });
+    if (navigator.canShare && navigator.canShare({ files: [file] })) {
+      await navigator.share({
+        files: [file],
+        title: fileName,
+        text: `Relatório de horas — ${linha.funcionario.nome}`,
+      });
+      return;
+    }
+  } catch (e) {
+    if (e && e.name === 'AbortError') return; // usuário cancelou o compartilhamento
+    console.error(e);
+  }
+
+  // Sem suporte a compartilhamento nativo (ex: computador): baixa o PDF e abre o WhatsApp já na conversa certa
+  doc.save(fileName);
+  window.open(`https://wa.me/${numero}?text=${encodeURIComponent(`Olá ${linha.funcionario.nome}, segue o relatório de horas em anexo.`)}`, '_blank');
+  avisar('O PDF foi baixado e o WhatsApp abriu na conversa certa — é só anexar o arquivo baixado na conversa.');
 }
 
 /* ============================== STORAGE ============================== */
@@ -592,8 +668,8 @@ function FuncionarioModal({ funcionario, onSave, onClose }) {
             </div>
             <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
               <div>
-                <label className="pc-label">Telefone</label>
-                <input className="pc-input" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} />
+                <label className="pc-label">Telefone (com código do país)</label>
+                <input className="pc-input" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="Ex: 5565912345678" />
               </div>
               <div>
                 <label className="pc-label">Cargo</label>
@@ -876,13 +952,15 @@ function PerfilFuncionario({ funcionario, horas, onBack, onEdit, onDelete, onSav
 
 /* ============================== RELATORIOS ============================== */
 
-function Relatorios({ funcionarios, horas, onBack }) {
+function Relatorios({ funcionarios, horas }) {
   const now = todayObj();
   const [filtroFunc, setFiltroFunc] = useState('todos');
   const [mesRef, setMesRef] = useState(`${now.y}-${pad2(now.m + 1)}`);
   const [modo, setModo] = useState('mes'); // 'mes' | 'periodo'
   const [inicio, setInicio] = useState('');
   const [fim, setFim] = useState('');
+  const [aviso, setAviso] = useState('');
+  const [enviando, setEnviando] = useState(false);
 
   const filtrado = useMemo(() => {
     return horas.filter((h) => {
@@ -917,12 +995,33 @@ function Relatorios({ funcionarios, horas, onBack }) {
   const totalGeralHoras = linhas.reduce((s, l) => s + l.totalHoras, 0);
   const totalGeralValor = linhas.reduce((s, l) => s + l.totalReceber, 0);
 
+  const periodoLabel = modo === 'mes' ? `Referência: ${mesRef}` : `Período: ${inicio || '—'} a ${fim || '—'}`;
+  const linhaSelecionada = filtroFunc !== 'todos' ? linhas.find((l) => l.funcionario.id === filtroFunc) : null;
+
+  const handleCompartilhar = async () => {
+    if (!linhaSelecionada) return;
+    setEnviando(true);
+    setAviso('');
+    await compartilharRelatorioWhatsapp(linhaSelecionada, periodoLabel, setAviso);
+    setEnviando(false);
+  };
+
   return (
     <>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18, flexWrap: 'wrap' }}>
         <span className="disp" style={{ fontSize: 16, color: 'var(--navy)', flex: 1 }}>Relatórios</span>
+        {linhaSelecionada && (
+          <button className="pc-btn pc-btn-primary no-print" onClick={handleCompartilhar} disabled={enviando}>
+            <Share2 size={14} /> {enviando ? 'Preparando...' : 'Compartilhar no WhatsApp'}
+          </button>
+        )}
         <button className="pc-btn pc-btn-outline no-print" onClick={() => window.print()}><Printer size={14} /> Imprimir / PDF</button>
       </div>
+      {aviso && (
+        <div className="pc-card no-print" style={{ padding: '10px 14px', marginBottom: 14, borderColor: 'var(--orange)', background: 'rgba(221,90,30,0.06)' }}>
+          <span style={{ fontSize: 12.5, color: 'var(--orange-dark)' }}>{aviso}</span>
+        </div>
+      )}
       <div style={{ maxWidth: 1000 }}>
         <div className="pc-card no-print" style={{ padding: 16, marginBottom: 18, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ minWidth: 180 }}>
