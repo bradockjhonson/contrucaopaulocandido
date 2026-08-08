@@ -49,8 +49,10 @@ async function resizeImage(file, maxW = 180) {
         canvas.width = img.width * scale;
         canvas.height = img.height * scale;
         const ctx = canvas.getContext('2d');
+        ctx.fillStyle = '#FFFFFF';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-        resolve(canvas.toDataURL('image/jpeg', 0.82));
+        resolve(canvas.toDataURL('image/jpeg', 0.88));
       };
       img.onerror = reject;
       img.src = e.target.result;
@@ -60,26 +62,70 @@ async function resizeImage(file, maxW = 180) {
   });
 }
 
+function getImageNaturalSize(dataUrl) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => resolve({ w: img.naturalWidth, h: img.naturalHeight });
+    img.onerror = () => resolve({ w: 1, h: 1 });
+    img.src = dataUrl;
+  });
+}
+
 /* ---------- Relatório em PDF + compartilhamento no WhatsApp ---------- */
 
 const slugify = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-zA-Z0-9]+/g, '-').toLowerCase();
 
 const soDigitos = (tel) => (tel || '').replace(/\D/g, '');
 
-function buildRelatorioPdf(linha, periodoLabel) {
+async function buildRelatorioPdf(linha, periodoLabel, logo) {
   const doc = new jsPDF();
+  const pageW = doc.internal.pageSize.getWidth();
+  const NAVY = [22, 40, 63];
+  const ORANGE = [221, 90, 30];
+  const INK_SOFT = [107, 114, 128];
+
+  // Cabeçalho colorido
+  doc.setFillColor(...NAVY);
+  doc.rect(0, 0, pageW, 34, 'F');
+  doc.setFillColor(...ORANGE);
+  doc.rect(0, 34, pageW, 1.4, 'F');
+
+  if (logo) {
+    try {
+      const { w, h } = await getImageNaturalSize(logo);
+      const maxW = 40, maxH = 20;
+      let lw = maxW, lh = (h / w) * lw;
+      if (lh > maxH) { lh = maxH; lw = (w / h) * lh; }
+      doc.addImage(logo, 'JPEG', pageW - 14 - lw, 17 - lh / 2, lw, lh);
+    } catch (e) { /* segue sem a logo se falhar */ }
+  }
+
+  doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
-  doc.text('Construções Paulo C', 14, 18);
-  doc.setFontSize(11);
-  doc.text('Relatório de Horas', 14, 26);
+  doc.setFont(undefined, 'bold');
+  doc.text('CONSTRUÇÕES PAULO C', 14, 16);
+  doc.setFontSize(10);
+  doc.setFont(undefined, 'normal');
+  doc.setTextColor(255, 190, 160);
+  doc.text('RELATÓRIO DE HORAS TRABALHADAS', 14, 24);
+
+  // Cartão com dados do funcionário
+  doc.setFillColor(244, 246, 250);
+  doc.roundedRect(14, 42, pageW - 28, 26, 2, 2, 'F');
+  doc.setTextColor(...NAVY);
+  doc.setFontSize(13);
+  doc.setFont(undefined, 'bold');
+  doc.text(linha.funcionario.nome, 20, 52);
+  doc.setFont(undefined, 'normal');
   doc.setFontSize(9);
-  doc.setTextColor(90, 90, 90);
-  doc.text(`Funcionário: ${linha.funcionario.nome}`, 14, 35);
-  doc.text(`Período: ${periodoLabel}`, 14, 41);
-  doc.text(`Valor/hora: ${euro(linha.valorHora)}`, 14, 47);
+  doc.setTextColor(...INK_SOFT);
+  doc.text(`${linha.funcionario.cargo || 'Funcionário'}  ·  ${periodoLabel}`, 20, 58);
+  doc.setTextColor(...NAVY);
+  doc.setFont(undefined, 'bold');
+  doc.text(`Valor/hora: ${euro(linha.valorHora)}`, 20, 64);
 
   autoTable(doc, {
-    startY: 54,
+    startY: 76,
     head: [['Data', 'Horas', 'Observação', 'Valor']],
     body: linha.entries.map((e) => [
       e.data.split('-').reverse().join('/'),
@@ -87,29 +133,43 @@ function buildRelatorioPdf(linha, periodoLabel) {
       e.observacao || '-',
       euro(e.horas * linha.valorHora),
     ]),
-    styles: { fontSize: 8, textColor: [26, 36, 48] },
-    headStyles: { fillColor: [22, 40, 63], textColor: 255 },
+    styles: { fontSize: 9, textColor: [26, 36, 48], cellPadding: 4 },
+    headStyles: { fillColor: NAVY, textColor: 255, fontStyle: 'bold' },
     alternateRowStyles: { fillColor: [244, 246, 250] },
+    theme: 'striped',
   });
 
-  const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 60;
-  doc.setFontSize(10);
-  doc.setTextColor(20, 20, 20);
-  doc.text(`Total de horas: ${linha.totalHoras.toFixed(2).replace('.00', '')}`, 14, finalY + 10);
-  doc.setTextColor(166, 66, 15);
-  doc.text(`Total a receber: ${euro(linha.totalReceber)}`, 14, finalY + 17);
+  const finalY = (doc.lastAutoTable && doc.lastAutoTable.finalY) || 80;
+  const boxY = finalY + 8;
+  doc.setFillColor(...NAVY);
+  doc.roundedRect(14, boxY, pageW - 28, 22, 2, 2, 'F');
+  doc.setTextColor(255, 255, 255);
+  doc.setFontSize(9);
+  doc.setFont(undefined, 'normal');
+  doc.text('TOTAL DE HORAS', 20, boxY + 9);
+  doc.text('TOTAL A RECEBER', pageW / 2 + 6, boxY + 9);
+  doc.setFontSize(13);
+  doc.setFont(undefined, 'bold');
+  doc.text(linha.totalHoras.toFixed(2).replace('.00', ''), 20, boxY + 17);
+  doc.setTextColor(255, 170, 120);
+  doc.text(euro(linha.totalReceber), pageW / 2 + 6, boxY + 17);
+
+  doc.setFont(undefined, 'normal');
+  doc.setFontSize(7.5);
+  doc.setTextColor(...INK_SOFT);
+  doc.text(`Gerado em ${new Date().toLocaleDateString('pt-PT')} pelo sistema Construções Paulo C`, 14, doc.internal.pageSize.getHeight() - 10);
 
   return doc;
 }
 
-async function compartilharRelatorioWhatsapp(linha, periodoLabel, avisar) {
+async function compartilharRelatorioWhatsapp(linha, periodoLabel, logo, avisar) {
   const numero = soDigitos(linha.funcionario.telefone);
   if (!numero || numero.length < 8) {
     avisar(`Cadastre o telefone de ${linha.funcionario.nome} (com o código do país, ex: 5565912345678) para poder compartilhar por WhatsApp.`);
     return;
   }
 
-  const doc = buildRelatorioPdf(linha, periodoLabel);
+  const doc = await buildRelatorioPdf(linha, periodoLabel, logo);
   const fileName = `relatorio-${slugify(linha.funcionario.nome)}.pdf`;
   const blob = doc.output('blob');
 
@@ -511,23 +571,24 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
     <div className="pc-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <GlobalStyle />
       <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
           <div
             onClick={() => podeGerenciarUsuarios && logoInputRef.current && logoInputRef.current.click()}
             title={podeGerenciarUsuarios ? 'Clique para trocar a logo' : undefined}
             className={logo ? '' : 'pc-stamp'}
             style={{
-              width: 42, height: 42, fontSize: 15, borderColor: 'white', color: 'white', flexShrink: 0,
+              width: logo ? 'auto' : 62, minWidth: 62, maxWidth: 190, height: 56, fontSize: 15,
+              borderColor: 'white', color: 'white', flexShrink: 0,
               cursor: podeGerenciarUsuarios ? 'pointer' : 'default', position: 'relative', overflow: 'hidden',
-              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
-              background: logo ? `url(${logo}) center/cover` : undefined,
+              borderRadius: logo ? 8 : '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: logo ? 'white' : undefined, padding: logo ? 6 : 0, transform: logo ? 'none' : undefined,
             }}>
-            {!logo && 'PC'}
+            {logo ? <img src={logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} /> : 'PC'}
             {podeGerenciarUsuarios && (
               <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s ease' }}
                 onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
                 onMouseLeave={(e) => e.currentTarget.style.opacity = 0}>
-                <Camera size={15} color="white" />
+                <Camera size={16} color="white" />
               </div>
             )}
           </div>
@@ -952,7 +1013,7 @@ function PerfilFuncionario({ funcionario, horas, onBack, onEdit, onDelete, onSav
 
 /* ============================== RELATORIOS ============================== */
 
-function Relatorios({ funcionarios, horas }) {
+function Relatorios({ funcionarios, horas, logo }) {
   const now = todayObj();
   const [filtroFunc, setFiltroFunc] = useState('todos');
   const [mesRef, setMesRef] = useState(`${now.y}-${pad2(now.m + 1)}`);
@@ -1002,7 +1063,7 @@ function Relatorios({ funcionarios, horas }) {
     if (!linhaSelecionada) return;
     setEnviando(true);
     setAviso('');
-    await compartilharRelatorioWhatsapp(linhaSelecionada, periodoLabel, setAviso);
+    await compartilharRelatorioWhatsapp(linhaSelecionada, periodoLabel, logo, setAviso);
     setEnviando(false);
   };
 
@@ -1367,7 +1428,7 @@ export default function App() {
 
   const uploadLogo = async (file) => {
     try {
-      const dataUrl = await resizeImage(file, 200);
+      const dataUrl = await resizeImage(file, 480);
       setLogo(dataUrl);
       await db.salvarLogo(dataUrl);
     } catch (e) { console.error(e); }
@@ -1571,7 +1632,7 @@ export default function App() {
           />
         )}
         {screen === 'relatorios' && (
-          <Relatorios funcionarios={funcionarios} horas={horas} />
+          <Relatorios funcionarios={funcionarios} horas={horas} logo={logo} />
         )}
       </AppShell>
       {modalFuncionario && (
