@@ -4,7 +4,7 @@ import {
   Users, Clock, Coins, Calendar as CalendarIcon, Plus, X, Pencil, Trash2,
   LogOut, FileText, Printer, ChevronLeft, ChevronRight, Phone, Briefcase,
   Camera, ArrowLeft, Check, AlertTriangle, UserPlus, Crown, ShieldCheck, ShieldX,
-  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle
+  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, LayoutDashboard, Headphones
 } from 'lucide-react';
 
 /* ============================== HELPERS ============================== */
@@ -162,23 +162,25 @@ const GlobalStyle = () => (
     @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
     :root {
-      --bg: #EAE5D8;
-      --bg-alt: #DED8C5;
-      --paper: #FBF9F2;
+      --bg: #EEF1F6;
+      --bg-alt: #E2E7EF;
+      --paper: #FFFFFF;
       --ink: #1A2430;
-      --ink-soft: #5B6472;
+      --ink-soft: #6B7280;
       --navy: #16283F;
       --navy-light: #26445F;
       --orange: #DD5A1E;
       --orange-dark: #A6420F;
       --steel: #4E7C93;
-      --line: #D8D1BC;
-      --ok: #3E7A4E;
-      --off: #A6392F;
+      --line: #E3E6EC;
+      --ok: #16A34A;
+      --off: #DC2626;
       --white: #FFFFFF;
-      --shadow-sm: 0 1px 2px rgba(22,40,63,0.07), 0 1px 1px rgba(22,40,63,0.05);
-      --shadow-md: 0 4px 14px rgba(22,40,63,0.10), 0 2px 4px rgba(22,40,63,0.06);
-      --shadow-lg: 0 20px 48px rgba(15,25,40,0.28), 0 6px 16px rgba(15,25,40,0.14);
+      --purple: #6C5CE7;
+      --blue: #3B82F6;
+      --shadow-sm: 0 1px 2px rgba(22,40,63,0.06), 0 1px 1px rgba(22,40,63,0.04);
+      --shadow-md: 0 4px 14px rgba(22,40,63,0.08), 0 2px 4px rgba(22,40,63,0.05);
+      --shadow-lg: 0 20px 48px rgba(15,25,40,0.24), 0 6px 16px rgba(15,25,40,0.12);
     }
 
     * { box-sizing: border-box; }
@@ -187,8 +189,6 @@ const GlobalStyle = () => (
       font-family: 'IBM Plex Sans', sans-serif;
       color: var(--ink);
       background: var(--bg);
-      background-image: radial-gradient(circle at 1px 1px, rgba(22,40,63,0.05) 1px, transparent 0);
-      background-size: 22px 22px;
       min-height: 100vh;
       position: relative;
       -webkit-font-smoothing: antialiased;
@@ -293,15 +293,18 @@ const GlobalStyle = () => (
 
 /* ============================== SMALL UI PIECES ============================== */
 
-function StatCard({ icon: Icon, label, value, accent }) {
+function StatCard({ icon: Icon, label, value, subtitle, color = '#4E7C93' }) {
   return (
-    <div className="pc-crop pc-card" style={{ padding: '16px 18px' }}>
-      <div className="cc2" />
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
-        <Icon size={16} color={accent || '#16283F'} />
-        <span className="pc-label" style={{ margin: 0 }}>{label}</span>
+    <div className="pc-card" style={{ padding: '18px 20px', position: 'relative', overflow: 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, marginBottom: 14 }}>
+        <div style={{ width: 40, height: 40, borderRadius: 10, background: `${color}1A`, display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}>
+          <Icon size={19} color={color} />
+        </div>
+        <span className="disp" style={{ fontSize: 11, color: 'var(--ink-soft)', letterSpacing: '0.06em' }}>{label}</span>
       </div>
-      <div className="mono disp" style={{ fontSize: 26, fontWeight: 600, color: 'var(--navy)' }}>{value}</div>
+      <div className="mono" style={{ fontSize: 25, fontWeight: 700, color: 'var(--ink)' }}>{value}</div>
+      {subtitle && <div style={{ fontSize: 11.5, color: 'var(--ink-soft)', marginTop: 3 }}>{subtitle}</div>}
+      <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 4, background: color }} />
     </div>
   );
 }
@@ -409,19 +412,67 @@ function LoginScreen({ onLogin, onRequestAccess, requestSent }) {
 
 /* ============================== TOP BAR ============================== */
 
-function TopBar({ title, onBack, onLogout, right }) {
+function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsuarios, pendentesCount, children }) {
+  const navItems = [
+    { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
+    { key: 'financeiro', label: 'Financeiro', icon: Wallet },
+    { key: 'relatorios', label: 'Relatórios', icon: FileText },
+  ];
+  if (podeGerenciarUsuarios) navItems.push({ key: 'usuarios', label: 'Usuários', icon: Users, badge: pendentesCount });
+
   return (
-    <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 2px 12px rgba(0,0,0,0.18)' }}>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-        {onBack && (
-          <button onClick={onBack} className="pc-btn pc-btn-ghost" style={{ color: 'white', padding: 6 }}><ArrowLeft size={18} /></button>
-        )}
-        <div className="pc-stamp" style={{ width: 30, height: 30, fontSize: 11, borderColor: 'white', color: 'white' }}>PC</div>
-        <span className="disp" style={{ fontSize: 15 }}>{title}</span>
-      </div>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-        {right}
+    <div className="pc-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
+      <GlobalStyle />
+      <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <div className="pc-stamp" style={{ width: 42, height: 42, fontSize: 15, borderColor: 'white', color: 'white' }}>PC</div>
+          <div>
+            <div className="disp" style={{ fontSize: 14, lineHeight: 1.35 }}>CONSTRUÇÕES PAULO C —</div>
+            <div className="disp" style={{ fontSize: 12, color: 'var(--orange)', letterSpacing: '0.1em' }}>{title}</div>
+          </div>
+        </div>
         <button onClick={onLogout} className="pc-btn pc-btn-ghost" style={{ color: 'white' }}><LogOut size={15} /> Sair</button>
+      </div>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
+        <div className="no-print" style={{ width: 236, flexShrink: 0, background: 'var(--navy)', display: 'flex', flexDirection: 'column', padding: '18px 12px' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
+            {navItems.map((item) => {
+              const active = activeScreen === item.key;
+              return (
+                <button key={item.key} onClick={() => onNavigate(item.key)}
+                  style={{
+                    display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', borderRadius: 6,
+                    border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', position: 'relative',
+                    background: active ? 'rgba(221,90,30,0.16)' : 'transparent',
+                    color: active ? 'var(--orange)' : 'rgba(255,255,255,0.72)',
+                    borderLeft: active ? '3px solid var(--orange)' : '3px solid transparent',
+                    fontFamily: "'Oswald', sans-serif", fontSize: 13, letterSpacing: '0.03em', textTransform: 'uppercase', fontWeight: 600,
+                    transition: 'background 0.15s ease, color 0.15s ease',
+                  }}>
+                  <item.icon size={17} />
+                  {item.label}
+                  {item.badge > 0 && (
+                    <span className="mono" style={{ marginLeft: 'auto', background: 'var(--orange)', color: 'white', fontSize: 10, borderRadius: 10, padding: '1px 6px', fontWeight: 700 }}>{item.badge}</span>
+                  )}
+                </button>
+              );
+            })}
+          </div>
+          <div style={{ marginTop: 'auto', paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
+            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 14, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+              <Headphones size={18} color="var(--orange)" style={{ flexShrink: 0, marginTop: 1 }} />
+              <div>
+                <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Precisa de ajuda?</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Fale com o suporte do sistema.</div>
+              </div>
+            </div>
+          </div>
+        </div>
+        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--bg)' }}>
+          <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+            {children}
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -607,7 +658,7 @@ function DiaModal({ data, entrada, onSave, onDelete, onClose }) {
 
 /* ============================== DASHBOARD ============================== */
 
-function Dashboard({ funcionarios, horas, lancamentos, onOpenFuncionario, onNovoFuncionario, onAbrirRelatorios, onAbrirUsuarios, onAbrirFinanceiro, podeGerenciarUsuarios, pendentesCount }) {
+function Dashboard({ funcionarios, horas, lancamentos, onOpenFuncionario, onNovoFuncionario, onAbrirRelatorios }) {
   const [cur, setCur] = useState(todayObj());
 
   const horasDoMes = useMemo(() => {
@@ -636,77 +687,59 @@ function Dashboard({ funcionarios, horas, lancamentos, onOpenFuncionario, onNovo
   }, [horasDoMes]);
 
   return (
-    <div className="pc-root" style={{ minHeight: '100vh' }}>
-      <GlobalStyle />
-      <TopBar title="Construções Paulo C — Dashboard" onLogout={() => window.location.reload()}
-        right={
-          <>
-            <button className="pc-btn pc-btn-ghost" style={{ color: 'white' }} onClick={onAbrirFinanceiro}><Wallet size={15} /> Financeiro</button>
-            {podeGerenciarUsuarios && (
-              <button className="pc-btn pc-btn-ghost" style={{ color: 'white', position: 'relative' }} onClick={onAbrirUsuarios}>
-                <Users size={15} /> Usuários
-                {pendentesCount > 0 && (
-                  <span className="mono" style={{ position: 'absolute', top: -4, right: -6, background: 'var(--orange)', color: 'white', fontSize: 10, borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>{pendentesCount}</span>
-                )}
-              </button>
-            )}
-          </>
-        }
-      />
-      <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 20 }}>
-          <StatCard icon={Users} label="Funcionários" value={funcionarios.length} />
-          <StatCard icon={Clock} label={`Horas — ${MESES[cur.m]}`} value={totalHorasMes.toFixed(2).replace('.00','')} />
-          <StatCard icon={Coins} label={`Folha — ${MESES[cur.m]}`} value={euro(totalFolhaMes)} accent="var(--orange)" />
-          <StatCard icon={Wallet} label={`Lucro — ${MESES[cur.m]}`} value={euro(lucroMes)} accent={lucroMes >= 0 ? 'var(--ok)' : 'var(--off)'} />
-        </div>
+    <>
+      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(190px,1fr))', gap: 16, marginBottom: 22 }}>
+        <StatCard icon={Users} label="Funcionários" value={funcionarios.length} subtitle="Total cadastrados" color="var(--purple)" />
+        <StatCard icon={Clock} label={`Horas — ${MESES[cur.m]}`} value={totalHorasMes.toFixed(2).replace('.00','')} subtitle="Total de horas registradas" color="var(--blue)" />
+        <StatCard icon={Coins} label={`Folha — ${MESES[cur.m]}`} value={euro(totalFolhaMes)} subtitle="Total da folha" color="var(--ok)" />
+        <StatCard icon={Wallet} label={`Lucro — ${MESES[cur.m]}`} value={euro(lucroMes)} subtitle={lucroMes >= 0 ? 'Resultado positivo' : 'Resultado negativo'} color={lucroMes >= 0 ? 'var(--ok)' : 'var(--off)'} />
+      </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }} className="dash-grid">
-          <MonthCalendar
-            year={cur.y} month={cur.m}
-            onPrev={() => setCur((c) => c.m === 0 ? { y: c.y - 1, m: 11 } : { ...c, m: c.m - 1 })}
-            onNext={() => setCur((c) => c.m === 11 ? { y: c.y + 1, m: 0 } : { ...c, m: c.m + 1 })}
-            dayClassName={(d) => horasPorDia[dateKey(cur.y, cur.m, d)] ? 'has-hours' : ''}
-            renderDay={{
-              content: (d) => (
-                <>
-                  <span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>{d}</span>
-                  {horasPorDia[dateKey(cur.y, cur.m, d)] ? (
-                    <span className="mono" style={{ fontSize: 9, color: 'var(--orange-dark)' }}>{horasPorDia[dateKey(cur.y, cur.m, d)]}h</span>
-                  ) : null}
-                </>
-              ),
-            }}
-          />
-          <div className="pc-card" style={{ padding: 16, display: 'flex', flexDirection: 'column' }}>
-            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 12 }}>
-              <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>Funcionários</span>
-              <div style={{ display: 'flex', gap: 8 }}>
-                <button className="pc-btn pc-btn-outline" onClick={onAbrirRelatorios}><FileText size={14} /> Relatórios</button>
-                <button className="pc-btn pc-btn-primary" onClick={onNovoFuncionario}><Plus size={14} /> Novo</button>
-              </div>
-            </div>
-            <div style={{ overflowY: 'auto', maxHeight: 340, display: 'flex', flexDirection: 'column', gap: 8 }}>
-              {funcionarios.length === 0 && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nenhum funcionário cadastrado ainda.</p>}
-              {funcionarios.map((f) => (
-                <div key={f.id} onClick={() => onOpenFuncionario(f.id)} className="pc-row-hover"
-                  style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 4, cursor: 'pointer', background: 'var(--white)' }}>
-                  <div style={{ width: 36, height: 36, borderRadius: '50%', background: f.foto ? `url(${f.foto}) center/cover` : 'var(--bg-alt)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-                    {!f.foto && <Users size={14} color="var(--ink-soft)" />}
-                  </div>
-                  <div style={{ flex: 1, minWidth: 0 }}>
-                    <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.nome}</div>
-                    <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{f.cargo || '—'} · {euro(f.valorHora)}/h</div>
-                  </div>
-                  <span className={`pc-badge ${f.status === 'Ativo' ? 'pc-badge-ok' : 'pc-badge-off'}`}>{f.status}</span>
-                </div>
-              ))}
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }} className="dash-grid">
+        <MonthCalendar
+          year={cur.y} month={cur.m}
+          onPrev={() => setCur((c) => c.m === 0 ? { y: c.y - 1, m: 11 } : { ...c, m: c.m - 1 })}
+          onNext={() => setCur((c) => c.m === 11 ? { y: c.y + 1, m: 0 } : { ...c, m: c.m + 1 })}
+          dayClassName={(d) => horasPorDia[dateKey(cur.y, cur.m, d)] ? 'has-hours' : ''}
+          renderDay={{
+            content: (d) => (
+              <>
+                <span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>{d}</span>
+                {horasPorDia[dateKey(cur.y, cur.m, d)] ? (
+                  <span className="mono" style={{ fontSize: 9, color: 'var(--orange-dark)' }}>{horasPorDia[dateKey(cur.y, cur.m, d)]}h</span>
+                ) : null}
+              </>
+            ),
+          }}
+        />
+        <div className="pc-card" style={{ padding: 18, display: 'flex', flexDirection: 'column' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 14 }}>
+            <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>Funcionários</span>
+            <div style={{ display: 'flex', gap: 8 }}>
+              <button className="pc-btn pc-btn-outline" onClick={onAbrirRelatorios}><FileText size={14} /> Relatórios</button>
+              <button className="pc-btn pc-btn-primary" onClick={onNovoFuncionario}><Plus size={14} /> Novo</button>
             </div>
           </div>
+          <div style={{ overflowY: 'auto', maxHeight: 340, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {funcionarios.length === 0 && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nenhum funcionário cadastrado ainda.</p>}
+            {funcionarios.map((f) => (
+              <div key={f.id} onClick={() => onOpenFuncionario(f.id)} className="pc-row-hover"
+                style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 4, cursor: 'pointer', background: 'var(--white)' }}>
+                <div style={{ width: 36, height: 36, borderRadius: '50%', background: f.foto ? `url(${f.foto}) center/cover` : 'var(--bg-alt)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  {!f.foto && <Users size={14} color="var(--ink-soft)" />}
+                </div>
+                <div style={{ flex: 1, minWidth: 0 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{f.nome}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>{f.cargo || '—'} · {euro(f.valorHora)}/h</div>
+                </div>
+                <span className={`pc-badge ${f.status === 'Ativo' ? 'pc-badge-ok' : 'pc-badge-off'}`}>{f.status}</span>
+              </div>
+            ))}
+          </div>
         </div>
-        <style>{`@media (max-width: 720px) { .dash-grid { grid-template-columns: 1fr !important; } }`}</style>
       </div>
-    </div>
+      <style>{`@media (max-width: 720px) { .dash-grid { grid-template-columns: 1fr !important; } }`}</style>
+    </>
   );
 }
 
@@ -733,65 +766,60 @@ function PerfilFuncionario({ funcionario, horas, onBack, onEdit, onDelete, onSav
   const totalReceberMes = totalHorasMes * funcionario.valorHora;
 
   return (
-    <div className="pc-root" style={{ minHeight: '100vh' }}>
-      <GlobalStyle />
-      <TopBar title={funcionario.nome} onBack={onBack} onLogout={() => window.location.reload()}
-        right={
-          <>
-            <button className="pc-btn pc-btn-ghost" style={{ color: 'white' }} onClick={onEdit}><Pencil size={14} /> Editar</button>
-            <button className="pc-btn pc-btn-ghost" style={{ color: '#F3A79A' }} onClick={() => setConfirmDel(true)}><Trash2 size={14} /> Excluir</button>
-          </>
-        }
-      />
-      <div style={{ padding: 20, maxWidth: 1000, margin: '0 auto' }}>
-        <div className="pc-crop pc-card" style={{ padding: 20, marginBottom: 18, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
-          <div className="cc2" />
-          <div style={{ width: 84, height: 84, borderRadius: '50%', background: funcionario.foto ? `url(${funcionario.foto}) center/cover` : 'var(--bg-alt)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-            {!funcionario.foto && <Users size={26} color="var(--ink-soft)" />}
-          </div>
-          <div style={{ flex: 1, minWidth: 200 }}>
-            <div className="disp" style={{ fontSize: 20, color: 'var(--navy)' }}>{funcionario.nome}</div>
-            <div style={{ fontSize: 13, color: 'var(--ink-soft)', display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 4 }}>
-              <span><Briefcase size={12} style={{ verticalAlign: -2 }} /> {funcionario.cargo || '—'}</span>
-              {funcionario.telefone && <span><Phone size={12} style={{ verticalAlign: -2 }} /> {funcionario.telefone}</span>}
-              <span className={`pc-badge ${funcionario.status === 'Ativo' ? 'pc-badge-ok' : 'pc-badge-off'}`}>{funcionario.status}</span>
-            </div>
-          </div>
-          <div style={{ display: 'flex', gap: 18 }}>
-            <div>
-              <div className="pc-label" style={{ margin: 0 }}>Valor/hora</div>
-              <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{euro(funcionario.valorHora)}</div>
-            </div>
-            <div>
-              <div className="pc-label" style={{ margin: 0 }}>Horas — {MESES[cur.m]}</div>
-              <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{totalHorasMes.toFixed(2).replace('.00','')}</div>
-            </div>
-            <div>
-              <div className="pc-label" style={{ margin: 0 }}>A receber</div>
-              <div className="mono" style={{ fontSize: 18, fontWeight: 600, color: 'var(--orange-dark)' }}>{euro(totalReceberMes)}</div>
-            </div>
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <button onClick={onBack} className="pc-btn pc-btn-outline" style={{ padding: 8 }}><ArrowLeft size={16} /></button>
+        <span className="disp" style={{ fontSize: 16, color: 'var(--navy)', flex: 1 }}>{funcionario.nome}</span>
+        <button className="pc-btn pc-btn-outline" onClick={onEdit}><Pencil size={14} /> Editar</button>
+        <button className="pc-btn pc-btn-danger" onClick={() => setConfirmDel(true)}><Trash2 size={14} /> Excluir</button>
+      </div>
+
+      <div className="pc-card" style={{ padding: 20, marginBottom: 18, display: 'flex', gap: 18, alignItems: 'center', flexWrap: 'wrap' }}>
+        <div style={{ width: 84, height: 84, borderRadius: '50%', background: funcionario.foto ? `url(${funcionario.foto}) center/cover` : 'var(--bg-alt)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+          {!funcionario.foto && <Users size={26} color="var(--ink-soft)" />}
+        </div>
+        <div style={{ flex: 1, minWidth: 200 }}>
+          <div className="disp" style={{ fontSize: 20, color: 'var(--navy)' }}>{funcionario.nome}</div>
+          <div style={{ fontSize: 13, color: 'var(--ink-soft)', display: 'flex', gap: 14, flexWrap: 'wrap', marginTop: 4 }}>
+            <span><Briefcase size={12} style={{ verticalAlign: -2 }} /> {funcionario.cargo || '—'}</span>
+            {funcionario.telefone && <span><Phone size={12} style={{ verticalAlign: -2 }} /> {funcionario.telefone}</span>}
+            <span className={`pc-badge ${funcionario.status === 'Ativo' ? 'pc-badge-ok' : 'pc-badge-off'}`}>{funcionario.status}</span>
           </div>
         </div>
-
-        <MonthCalendar
-          year={cur.y} month={cur.m}
-          onPrev={() => setCur((c) => c.m === 0 ? { y: c.y - 1, m: 11 } : { ...c, m: c.m - 1 })}
-          onNext={() => setCur((c) => c.m === 11 ? { y: c.y + 1, m: 0 } : { ...c, m: c.m + 1 })}
-          dayClassName={(d) => mapHoras[dateKey(cur.y, cur.m, d)] ? 'has-hours' : ''}
-          renderDay={{
-            onClick: (d) => setDiaSel(dateKey(cur.y, cur.m, d)),
-            content: (d) => {
-              const entry = mapHoras[dateKey(cur.y, cur.m, d)];
-              return (
-                <>
-                  <span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>{d}</span>
-                  {entry ? <span className="mono" style={{ fontSize: 9, color: 'var(--orange-dark)' }}>{entry.horas}h</span> : null}
-                </>
-              );
-            },
-          }}
-        />
+        <div style={{ display: 'flex', gap: 18 }}>
+          <div>
+            <div className="pc-label" style={{ margin: 0 }}>Valor/hora</div>
+            <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{euro(funcionario.valorHora)}</div>
+          </div>
+          <div>
+            <div className="pc-label" style={{ margin: 0 }}>Horas — {MESES[cur.m]}</div>
+            <div className="mono" style={{ fontSize: 18, fontWeight: 600 }}>{totalHorasMes.toFixed(2).replace('.00','')}</div>
+          </div>
+          <div>
+            <div className="pc-label" style={{ margin: 0 }}>A receber</div>
+            <div className="mono" style={{ fontSize: 18, fontWeight: 600, color: 'var(--orange-dark)' }}>{euro(totalReceberMes)}</div>
+          </div>
+        </div>
       </div>
+
+      <MonthCalendar
+        year={cur.y} month={cur.m}
+        onPrev={() => setCur((c) => c.m === 0 ? { y: c.y - 1, m: 11 } : { ...c, m: c.m - 1 })}
+        onNext={() => setCur((c) => c.m === 11 ? { y: c.y + 1, m: 0 } : { ...c, m: c.m + 1 })}
+        dayClassName={(d) => mapHoras[dateKey(cur.y, cur.m, d)] ? 'has-hours' : ''}
+        renderDay={{
+          onClick: (d) => setDiaSel(dateKey(cur.y, cur.m, d)),
+          content: (d) => {
+            const entry = mapHoras[dateKey(cur.y, cur.m, d)];
+            return (
+              <>
+                <span className="mono" style={{ fontSize: 12, fontWeight: 600 }}>{d}</span>
+                {entry ? <span className="mono" style={{ fontSize: 9, color: 'var(--orange-dark)' }}>{entry.horas}h</span> : null}
+              </>
+            );
+          },
+        }}
+      />
 
       {diaSel && (
         <DiaModal
@@ -806,7 +834,7 @@ function PerfilFuncionario({ funcionario, horas, onBack, onEdit, onDelete, onSav
         <Confirm text={`Excluir o funcionário "${funcionario.nome}"? Todos os registros de horas dele também serão apagados.`}
           onConfirm={() => { onDelete(funcionario.id); setConfirmDel(false); }} onCancel={() => setConfirmDel(false)} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -854,11 +882,12 @@ function Relatorios({ funcionarios, horas, onBack }) {
   const totalGeralValor = linhas.reduce((s, l) => s + l.totalReceber, 0);
 
   return (
-    <div className="pc-root" style={{ minHeight: '100vh' }}>
-      <GlobalStyle />
-      <TopBar title="Relatórios" onBack={onBack} onLogout={() => window.location.reload()}
-        right={<button className="pc-btn pc-btn-ghost" style={{ color: 'white' }} onClick={() => window.print()}><Printer size={14} /> Imprimir / PDF</button>} />
-      <div style={{ padding: 20, maxWidth: 1000, margin: '0 auto' }}>
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <span className="disp" style={{ fontSize: 16, color: 'var(--navy)', flex: 1 }}>Relatórios</span>
+        <button className="pc-btn pc-btn-outline no-print" onClick={() => window.print()}><Printer size={14} /> Imprimir / PDF</button>
+      </div>
+      <div style={{ maxWidth: 1000 }}>
         <div className="pc-card no-print" style={{ padding: 16, marginBottom: 18, display: 'flex', gap: 14, flexWrap: 'wrap', alignItems: 'flex-end' }}>
           <div style={{ minWidth: 180 }}>
             <label className="pc-label">Funcionário</label>
@@ -931,8 +960,7 @@ function Relatorios({ funcionarios, horas, onBack }) {
         ))}
 
         {linhas.length > 0 && (
-          <div className="pc-crop pc-card print-only-block" style={{ padding: 16, background: 'var(--navy)', color: 'white' }}>
-            <div className="cc2" />
+          <div className="pc-card print-only-block" style={{ padding: 16, background: 'var(--navy)', color: 'white' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 10 }}>
               <span className="disp" style={{ fontSize: 14 }}>Total geral do período</span>
               <span className="mono" style={{ fontSize: 14 }}>{totalGeralHoras.toFixed(2).replace('.00','')}h · <strong>{euro(totalGeralValor)}</strong></span>
@@ -940,7 +968,7 @@ function Relatorios({ funcionarios, horas, onBack }) {
           </div>
         )}
       </div>
-    </div>
+    </>
   );
 }
 
@@ -1031,23 +1059,24 @@ function Financeiro({ lancamentos, onBack, onNovo, onEditar, onExcluir }) {
   const saldo = totalEntradas - totalSaidas;
 
   return (
-    <div className="pc-root" style={{ minHeight: '100vh' }}>
-      <GlobalStyle />
-      <TopBar title="Financeiro" onBack={onBack} onLogout={() => window.location.reload()}
-        right={<button className="pc-btn pc-btn-ghost" style={{ color: 'white' }} onClick={onNovo}><Plus size={15} /> Novo</button>} />
-      <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 18 }}>
+        <span className="disp" style={{ fontSize: 16, color: 'var(--navy)', flex: 1 }}>Financeiro</span>
+        <button className="pc-btn pc-btn-primary" onClick={onNovo}><Plus size={15} /> Novo</button>
+      </div>
+      <div style={{ maxWidth: 900 }}>
         <div style={{ marginBottom: 18 }}>
           <label className="pc-label">Mês de referência</label>
           <input className="pc-input" type="month" value={mesRef} onChange={(e) => setMesRef(e.target.value)} style={{ maxWidth: 200 }} />
         </div>
 
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 20 }}>
-          <StatCard icon={TrendingUp} label="Entradas" value={euro(totalEntradas)} accent="var(--ok)" />
-          <StatCard icon={TrendingDown} label="Saídas" value={euro(totalSaidas)} accent="var(--off)" />
-          <StatCard icon={Wallet} label="Saldo do mês" value={euro(saldo)} accent={saldo >= 0 ? 'var(--ok)' : 'var(--off)'} />
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 16, marginBottom: 20 }}>
+          <StatCard icon={TrendingUp} label="Entradas" value={euro(totalEntradas)} subtitle="Receitas do mês" color="var(--ok)" />
+          <StatCard icon={TrendingDown} label="Saídas" value={euro(totalSaidas)} subtitle="Despesas do mês" color="var(--off)" />
+          <StatCard icon={Wallet} label="Saldo do mês" value={euro(saldo)} subtitle={saldo >= 0 ? 'Resultado positivo' : 'Resultado negativo'} color={saldo >= 0 ? 'var(--ok)' : 'var(--off)'} />
         </div>
 
-        <div className="pc-card" style={{ padding: 16 }}>
+        <div className="pc-card" style={{ padding: 18 }}>
           <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>Lançamentos do mês</span>
           <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {doMes.length === 0 && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>Nenhum lançamento neste mês ainda.</p>}
@@ -1078,7 +1107,7 @@ function Financeiro({ lancamentos, onBack, onNovo, onEditar, onExcluir }) {
           onConfirm={() => { onExcluir(confirmDel.id); setConfirmDel(null); }}
           onCancel={() => setConfirmDel(null)} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -1099,12 +1128,13 @@ function UsuariosPanel({ usuarios, currentUser, onBack, onAprovar, onRecusar, on
   }[role]);
 
   return (
-    <div className="pc-root" style={{ minHeight: '100vh' }}>
-      <GlobalStyle />
-      <TopBar title="Usuários & Acesso" onBack={onBack} onLogout={() => window.location.reload()} />
-      <div style={{ padding: 20, maxWidth: 800, margin: '0 auto' }}>
+    <>
+      <div style={{ marginBottom: 18 }}>
+        <span className="disp" style={{ fontSize: 16, color: 'var(--navy)' }}>Usuários &amp; Acesso</span>
+      </div>
+      <div style={{ maxWidth: 800 }}>
 
-        <div className="pc-card" style={{ padding: 16, marginBottom: 18 }}>
+        <div className="pc-card" style={{ padding: 18, marginBottom: 18 }}>
           <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>Solicitações pendentes</span>
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {pendentes.length === 0 && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>Nenhuma solicitação de cadastro no momento.</p>}
@@ -1121,7 +1151,7 @@ function UsuariosPanel({ usuarios, currentUser, onBack, onAprovar, onRecusar, on
           </div>
         </div>
 
-        <div className="pc-card" style={{ padding: 16 }}>
+        <div className="pc-card" style={{ padding: 18 }}>
           <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>Pessoas com acesso</span>
           <div style={{ marginTop: 10, display: 'flex', flexDirection: 'column', gap: 8 }}>
             {aprovados.map((u) => (
@@ -1155,7 +1185,7 @@ function UsuariosPanel({ usuarios, currentUser, onBack, onAprovar, onRecusar, on
           onConfirm={() => { confirmAction.onConfirm(); setConfirmAction(null); }}
           onCancel={() => setConfirmAction(null)} />
       )}
-    </div>
+    </>
   );
 }
 
@@ -1340,57 +1370,63 @@ export default function App() {
   const podeGerenciarUsuarios = currentUser.role === 'owner' || currentUser.role === 'admin';
   const pendentesCount = usuarios.filter((u) => u.status === 'pendente').length;
 
+  const screenTitles = { dashboard: 'Dashboard', financeiro: 'Financeiro', relatorios: 'Relatórios', usuarios: 'Usuários', perfil: 'Funcionário' };
+  const activeNav = screen === 'perfil' ? 'dashboard' : screen;
+
   return (
     <>
-      {screen === 'dashboard' && (
-        <Dashboard
-          funcionarios={funcionarios}
-          horas={horas}
-          lancamentos={lancamentos}
-          onOpenFuncionario={(id) => { setPerfilId(id); setScreen('perfil'); }}
-          onNovoFuncionario={() => setModalFuncionario('new')}
-          onAbrirRelatorios={() => setScreen('relatorios')}
-          onAbrirUsuarios={() => setScreen('usuarios')}
-          onAbrirFinanceiro={() => setScreen('financeiro')}
-          podeGerenciarUsuarios={podeGerenciarUsuarios}
-          pendentesCount={pendentesCount}
-        />
-      )}
-      {screen === 'financeiro' && (
-        <Financeiro
-          lancamentos={lancamentos}
-          onBack={() => setScreen('dashboard')}
-          onNovo={() => setModalLancamento('new')}
-          onEditar={(l) => setModalLancamento(l)}
-          onExcluir={deleteLancamento}
-        />
-      )}
-      {screen === 'usuarios' && podeGerenciarUsuarios && (
-        <UsuariosPanel
-          usuarios={usuarios}
-          currentUser={currentUser}
-          onBack={() => setScreen('dashboard')}
-          onAprovar={aprovarUsuario}
-          onRecusar={recusarUsuario}
-          onPromover={promoverAdmin}
-          onTransferirPosse={transferirPosse}
-          onRemover={removerUsuario}
-        />
-      )}
-      {screen === 'perfil' && perfil && (
-        <PerfilFuncionario
-          funcionario={perfil}
-          horas={horas}
-          onBack={() => { setScreen('dashboard'); setPerfilId(null); }}
-          onEdit={() => setModalFuncionario(perfil)}
-          onDelete={deleteFuncionario}
-          onSaveDia={saveDia}
-          onDeleteDia={deleteDia}
-        />
-      )}
-      {screen === 'relatorios' && (
-        <Relatorios funcionarios={funcionarios} horas={horas} onBack={() => setScreen('dashboard')} />
-      )}
+      <AppShell
+        title={screenTitles[screen] || 'Dashboard'}
+        activeScreen={activeNav}
+        onNavigate={(key) => { setScreen(key); setPerfilId(null); }}
+        onLogout={() => window.location.reload()}
+        podeGerenciarUsuarios={podeGerenciarUsuarios}
+        pendentesCount={pendentesCount}
+      >
+        {screen === 'dashboard' && (
+          <Dashboard
+            funcionarios={funcionarios}
+            horas={horas}
+            lancamentos={lancamentos}
+            onOpenFuncionario={(id) => { setPerfilId(id); setScreen('perfil'); }}
+            onNovoFuncionario={() => setModalFuncionario('new')}
+            onAbrirRelatorios={() => setScreen('relatorios')}
+          />
+        )}
+        {screen === 'financeiro' && (
+          <Financeiro
+            lancamentos={lancamentos}
+            onNovo={() => setModalLancamento('new')}
+            onEditar={(l) => setModalLancamento(l)}
+            onExcluir={deleteLancamento}
+          />
+        )}
+        {screen === 'usuarios' && podeGerenciarUsuarios && (
+          <UsuariosPanel
+            usuarios={usuarios}
+            currentUser={currentUser}
+            onAprovar={aprovarUsuario}
+            onRecusar={recusarUsuario}
+            onPromover={promoverAdmin}
+            onTransferirPosse={transferirPosse}
+            onRemover={removerUsuario}
+          />
+        )}
+        {screen === 'perfil' && perfil && (
+          <PerfilFuncionario
+            funcionario={perfil}
+            horas={horas}
+            onBack={() => { setScreen('dashboard'); setPerfilId(null); }}
+            onEdit={() => setModalFuncionario(perfil)}
+            onDelete={deleteFuncionario}
+            onSaveDia={saveDia}
+            onDeleteDia={deleteDia}
+          />
+        )}
+        {screen === 'relatorios' && (
+          <Relatorios funcionarios={funcionarios} horas={horas} />
+        )}
+      </AppShell>
       {modalFuncionario && (
         <FuncionarioModal
           funcionario={modalFuncionario === 'new' ? null : modalFuncionario}
