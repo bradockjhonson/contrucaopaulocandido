@@ -138,109 +138,127 @@ const GlobalStyle = () => (
   <style>{`
     @import url('https://fonts.googleapis.com/css2?family=Oswald:wght@400;500;600;700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500;600&display=swap');
 
-    .pc-root {
-      --bg: #E8E3D6;
-      --bg-alt: #DCD6C4;
-      --paper: #F4F1E7;
+    :root {
+      --bg: #EAE5D8;
+      --bg-alt: #DED8C5;
+      --paper: #FBF9F2;
       --ink: #1A2430;
-      --ink-soft: #4B5563;
+      --ink-soft: #5B6472;
       --navy: #16283F;
-      --navy-light: #24405F;
+      --navy-light: #26445F;
       --orange: #DD5A1E;
       --orange-dark: #A6420F;
       --steel: #4E7C93;
-      --line: #BFB79E;
+      --line: #D8D1BC;
       --ok: #3E7A4E;
       --off: #A6392F;
       --white: #FFFFFF;
+      --shadow-sm: 0 1px 2px rgba(22,40,63,0.07), 0 1px 1px rgba(22,40,63,0.05);
+      --shadow-md: 0 4px 14px rgba(22,40,63,0.10), 0 2px 4px rgba(22,40,63,0.06);
+      --shadow-lg: 0 20px 48px rgba(15,25,40,0.28), 0 6px 16px rgba(15,25,40,0.14);
+    }
+
+    * { box-sizing: border-box; }
+
+    .pc-root {
       font-family: 'IBM Plex Sans', sans-serif;
       color: var(--ink);
       background: var(--bg);
+      background-image: radial-gradient(circle at 1px 1px, rgba(22,40,63,0.05) 1px, transparent 0);
+      background-size: 22px 22px;
       min-height: 100vh;
       position: relative;
+      -webkit-font-smoothing: antialiased;
     }
-    .pc-root * { box-sizing: border-box; }
-    .pc-root .mono { font-family: 'IBM Plex Mono', monospace; }
-    .pc-root .disp {
+    .mono { font-family: 'IBM Plex Mono', monospace; }
+    .disp {
       font-family: 'Oswald', sans-serif;
       text-transform: uppercase;
       letter-spacing: 0.04em;
     }
-    .pc-root .blueprint-bg {
+    .blueprint-bg {
       background-image:
-        repeating-linear-gradient(0deg, rgba(22,40,63,0.06) 0px, rgba(22,40,63,0.06) 1px, transparent 1px, transparent 28px),
-        repeating-linear-gradient(90deg, rgba(22,40,63,0.06) 0px, rgba(22,40,63,0.06) 1px, transparent 1px, transparent 28px);
+        repeating-linear-gradient(0deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 28px),
+        repeating-linear-gradient(90deg, rgba(255,255,255,0.045) 0px, rgba(255,255,255,0.045) 1px, transparent 1px, transparent 28px);
     }
     .pc-crop { position: relative; }
     .pc-crop::before, .pc-crop::after,
-    .pc-crop .cc2::before, .pc-crop .cc2::after { content: ''; position: absolute; width: 10px; height: 10px; border-color: var(--navy); }
-    .pc-crop::before { top: -1px; left: -1px; border-top: 2px solid var(--navy); border-left: 2px solid var(--navy); }
-    .pc-crop::after { top: -1px; right: -1px; border-top: 2px solid var(--navy); border-right: 2px solid var(--navy); }
+    .pc-crop .cc2::before, .pc-crop .cc2::after { content: ''; position: absolute; width: 11px; height: 11px; border-color: var(--orange); }
+    .pc-crop::before { top: -1px; left: -1px; border-top: 2px solid var(--orange); border-left: 2px solid var(--orange); }
+    .pc-crop::after { top: -1px; right: -1px; border-top: 2px solid var(--orange); border-right: 2px solid var(--orange); }
     .pc-crop .cc2 { position: absolute; inset: 0; pointer-events: none; }
-    .pc-crop .cc2::before { bottom: -1px; left: -1px; top: auto; border-bottom: 2px solid var(--navy); border-left: 2px solid var(--navy); }
-    .pc-crop .cc2::after { bottom: -1px; right: -1px; top: auto; border-bottom: 2px solid var(--navy); border-right: 2px solid var(--navy); }
+    .pc-crop .cc2::before { bottom: -1px; left: -1px; top: auto; border-bottom: 2px solid var(--orange); border-left: 2px solid var(--orange); }
+    .pc-crop .cc2::after { bottom: -1px; right: -1px; top: auto; border-bottom: 2px solid var(--orange); border-right: 2px solid var(--orange); }
 
     .pc-btn {
       font-family: 'Oswald', sans-serif; text-transform: uppercase; letter-spacing: 0.05em;
-      font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 3px;
+      font-size: 13px; font-weight: 600; padding: 10px 18px; border-radius: 4px;
       border: 1.5px solid transparent; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
-      transition: transform 0.08s ease, background 0.15s ease;
+      transition: transform 0.1s ease, background 0.15s ease, box-shadow 0.15s ease, border-color 0.15s ease, color 0.15s ease;
     }
-    .pc-btn:active { transform: translateY(1px); }
-    .pc-btn-primary { background: var(--orange); color: var(--white); }
-    .pc-btn-primary:hover { background: var(--orange-dark); }
-    .pc-btn-navy { background: var(--navy); color: var(--white); }
-    .pc-btn-navy:hover { background: var(--navy-light); }
-    .pc-btn-outline { background: transparent; color: var(--navy); border-color: var(--navy); }
-    .pc-btn-outline:hover { background: var(--navy); color: var(--white); }
-    .pc-btn-danger { background: transparent; color: var(--off); border-color: var(--off); }
-    .pc-btn-danger:hover { background: var(--off); color: var(--white); }
+    .pc-btn:active { transform: translateY(1px) scale(0.98); }
+    .pc-btn-primary { background: var(--orange); color: var(--white); box-shadow: 0 2px 8px rgba(221,90,30,0.35); }
+    .pc-btn-primary:hover { background: var(--orange-dark); box-shadow: 0 4px 14px rgba(221,90,30,0.45); transform: translateY(-1px); }
+    .pc-btn-navy { background: var(--navy); color: var(--white); box-shadow: 0 2px 8px rgba(22,40,63,0.3); }
+    .pc-btn-navy:hover { background: var(--navy-light); transform: translateY(-1px); }
+    .pc-btn-outline { background: transparent; color: var(--navy); border-color: var(--line); }
+    .pc-btn-outline:hover { background: var(--navy); color: var(--white); border-color: var(--navy); }
+    .pc-btn-danger { background: transparent; color: var(--off); border-color: rgba(166,57,47,0.35); }
+    .pc-btn-danger:hover { background: var(--off); color: var(--white); border-color: var(--off); }
     .pc-btn-ghost { background: transparent; color: var(--ink); }
     .pc-btn-ghost:hover { background: rgba(0,0,0,0.06); }
-    .pc-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .pc-btn:disabled { opacity: 0.5; cursor: not-allowed; transform: none !important; }
 
     .pc-input {
-      width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 3px;
+      width: 100%; padding: 10px 12px; border: 1.5px solid var(--line); border-radius: 4px;
       background: var(--white); font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; color: var(--ink);
-      outline: none;
+      outline: none; transition: border-color 0.15s ease, box-shadow 0.15s ease;
     }
-    .pc-input:focus { border-color: var(--orange); }
+    .pc-input:focus { border-color: var(--orange); box-shadow: 0 0 0 3px rgba(221,90,30,0.14); }
     .pc-label {
       font-family: 'Oswald', sans-serif; font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
       color: var(--ink-soft); display: block; margin-bottom: 6px;
     }
 
-    .pc-card { background: var(--paper); border: 1px solid var(--line); border-radius: 4px; }
+    .pc-card { background: var(--paper); border: 1px solid var(--line); border-radius: 6px; box-shadow: var(--shadow-sm); transition: box-shadow 0.2s ease; }
     .pc-stamp {
       display: inline-flex; align-items: center; justify-content: center; border: 2px solid var(--orange);
       color: var(--orange); border-radius: 50%; font-family: 'Oswald', sans-serif; font-weight: 700;
-      transform: rotate(-6deg);
+      transform: rotate(-6deg); box-shadow: 0 2px 6px rgba(221,90,30,0.25);
     }
     .pc-badge { font-family: 'Oswald', sans-serif; font-size: 11px; text-transform: uppercase; letter-spacing: 0.06em; padding: 3px 9px; border-radius: 20px; font-weight: 600; }
     .pc-badge-ok { background: rgba(62,122,78,0.14); color: var(--ok); }
     .pc-badge-off { background: rgba(166,57,47,0.14); color: var(--off); }
 
+    .pc-row-hover { transition: box-shadow 0.15s ease, transform 0.15s ease, border-color 0.15s ease; }
+    .pc-row-hover:hover { box-shadow: var(--shadow-sm); transform: translateY(-1px); border-color: var(--orange) !important; }
+
     .pc-cal-cell {
       aspect-ratio: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
-      border: 1px solid var(--line); background: var(--white); cursor: pointer; position: relative; border-radius: 3px;
-      transition: background 0.12s ease;
+      border: 1px solid var(--line); background: var(--white); cursor: pointer; position: relative; border-radius: 4px;
+      transition: background 0.12s ease, box-shadow 0.12s ease, transform 0.12s ease;
     }
-    .pc-cal-cell:hover { background: var(--bg-alt); }
-    .pc-cal-cell.has-hours { background: rgba(221,90,30,0.08); border-color: var(--orange); }
+    .pc-cal-cell:hover { background: var(--bg-alt); box-shadow: var(--shadow-sm); transform: translateY(-1px); }
+    .pc-cal-cell.has-hours { background: rgba(221,90,30,0.10); border-color: var(--orange); }
     .pc-cal-cell.empty { visibility: hidden; }
 
     .pc-modal-overlay {
-      position: fixed; inset: 0; background: rgba(22,40,63,0.55); backdrop-filter: blur(2px);
+      position: fixed; inset: 0; background: rgba(13,22,36,0.6); backdrop-filter: blur(3px);
       display: flex; align-items: center; justify-content: center; z-index: 50; padding: 16px;
+      animation: pcFadeIn 0.15s ease;
     }
     .pc-modal {
-      background: var(--paper); border-radius: 6px; max-width: 460px; width: 100%;
-      max-height: 88vh; overflow-y: auto; border: 1px solid var(--line);
+      background: var(--paper); border-radius: 8px; max-width: 460px; width: 100%;
+      max-height: 88vh; overflow-y: auto; border: 1px solid var(--line); box-shadow: var(--shadow-lg);
+      animation: pcModalIn 0.18s cubic-bezier(0.2,0.8,0.3,1);
     }
+    @keyframes pcFadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes pcModalIn { from { opacity: 0; transform: translateY(10px) scale(0.98); } to { opacity: 1; transform: translateY(0) scale(1); } }
 
     .pc-table { width: 100%; border-collapse: collapse; font-family: 'IBM Plex Mono', monospace; font-size: 13px; }
     .pc-table th { text-align: left; font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-soft); border-bottom: 2px solid var(--navy); padding: 8px 10px; }
     .pc-table td { padding: 8px 10px; border-bottom: 1px dashed var(--line); }
+    .pc-table tbody tr:hover { background: rgba(221,90,30,0.05); }
 
     @media print {
       .no-print { display: none !important; }
@@ -370,7 +388,7 @@ function LoginScreen({ onLogin, onRequestAccess, requestSent }) {
 
 function TopBar({ title, onBack, onLogout, right }) {
   return (
-    <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10 }}>
+    <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '14px 20px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', position: 'sticky', top: 0, zIndex: 10, boxShadow: '0 2px 12px rgba(0,0,0,0.18)' }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
         {onBack && (
           <button onClick={onBack} className="pc-btn pc-btn-ghost" style={{ color: 'white', padding: 6 }}><ArrowLeft size={18} /></button>
@@ -634,7 +652,7 @@ function Dashboard({ funcionarios, horas, onOpenFuncionario, onNovoFuncionario, 
             <div style={{ overflowY: 'auto', maxHeight: 340, display: 'flex', flexDirection: 'column', gap: 8 }}>
               {funcionarios.length === 0 && <p style={{ color: 'var(--ink-soft)', fontSize: 13 }}>Nenhum funcionário cadastrado ainda.</p>}
               {funcionarios.map((f) => (
-                <div key={f.id} onClick={() => onOpenFuncionario(f.id)}
+                <div key={f.id} onClick={() => onOpenFuncionario(f.id)} className="pc-row-hover"
                   style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', border: '1px solid var(--line)', borderRadius: 4, cursor: 'pointer', background: 'var(--white)' }}>
                   <div style={{ width: 36, height: 36, borderRadius: '50%', background: f.foto ? `url(${f.foto}) center/cover` : 'var(--bg-alt)', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
                     {!f.foto && <Users size={14} color="var(--ink-soft)" />}
