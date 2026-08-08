@@ -153,6 +153,16 @@ const db = {
     const { error } = await supabase.from('lancamentos').delete().eq('id', id);
     if (error) throw error;
   },
+
+  async getLogo() {
+    const { data, error } = await supabase.from('config').select('logo').eq('id', 'app').maybeSingle();
+    if (error) throw error;
+    return data ? data.logo || '' : '';
+  },
+  async salvarLogo(logoBase64) {
+    const { error } = await supabase.from('config').upsert({ id: 'app', logo: logoBase64 });
+    if (error) throw error;
+  },
 };
 
 /* ============================== STYLE ============================== */
@@ -412,7 +422,8 @@ function LoginScreen({ onLogin, onRequestAccess, requestSent }) {
 
 /* ============================== TOP BAR ============================== */
 
-function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsuarios, pendentesCount, children }) {
+function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsuarios, pendentesCount, logo, onUploadLogo, children }) {
+  const logoInputRef = useRef(null);
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'financeiro', label: 'Financeiro', icon: Wallet },
@@ -425,7 +436,29 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
       <GlobalStyle />
       <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', zIndex: 20 }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
-          <div className="pc-stamp" style={{ width: 42, height: 42, fontSize: 15, borderColor: 'white', color: 'white' }}>PC</div>
+          <div
+            onClick={() => podeGerenciarUsuarios && logoInputRef.current && logoInputRef.current.click()}
+            title={podeGerenciarUsuarios ? 'Clique para trocar a logo' : undefined}
+            className={logo ? '' : 'pc-stamp'}
+            style={{
+              width: 42, height: 42, fontSize: 15, borderColor: 'white', color: 'white', flexShrink: 0,
+              cursor: podeGerenciarUsuarios ? 'pointer' : 'default', position: 'relative', overflow: 'hidden',
+              borderRadius: '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
+              background: logo ? `url(${logo}) center/cover` : undefined,
+            }}>
+            {!logo && 'PC'}
+            {podeGerenciarUsuarios && (
+              <div style={{ position: 'absolute', inset: 0, background: 'rgba(0,0,0,0.45)', display: 'flex', alignItems: 'center', justifyContent: 'center', opacity: 0, transition: 'opacity 0.15s ease' }}
+                onMouseEnter={(e) => e.currentTarget.style.opacity = 1}
+                onMouseLeave={(e) => e.currentTarget.style.opacity = 0}>
+                <Camera size={15} color="white" />
+              </div>
+            )}
+          </div>
+          {podeGerenciarUsuarios && (
+            <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
+              onChange={(e) => { if (e.target.files[0]) onUploadLogo(e.target.files[0]); e.target.value = ''; }} />
+          )}
           <div>
             <div className="disp" style={{ fontSize: 14, lineHeight: 1.35 }}>CONSTRUÇÕES PAULO C —</div>
             <div className="disp" style={{ fontSize: 12, color: 'var(--orange)', letterSpacing: '0.1em' }}>{title}</div>
@@ -459,13 +492,16 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
             })}
           </div>
           <div style={{ marginTop: 'auto', paddingTop: 18, borderTop: '1px solid rgba(255,255,255,0.1)' }}>
-            <div style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 14, display: 'flex', gap: 10, alignItems: 'flex-start' }}>
+            <a href="https://wa.me/5565981562442" target="_blank" rel="noopener noreferrer"
+              style={{ background: 'rgba(255,255,255,0.06)', borderRadius: 8, padding: 14, display: 'flex', gap: 10, alignItems: 'flex-start', textDecoration: 'none', cursor: 'pointer', transition: 'background 0.15s ease' }}
+              onMouseEnter={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.12)'}
+              onMouseLeave={(e) => e.currentTarget.style.background = 'rgba(255,255,255,0.06)'}>
               <Headphones size={18} color="var(--orange)" style={{ flexShrink: 0, marginTop: 1 }} />
               <div>
                 <div style={{ fontSize: 12, fontWeight: 600, color: 'white' }}>Precisa de ajuda?</div>
-                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Fale com o suporte do sistema.</div>
+                <div style={{ fontSize: 11, color: 'rgba(255,255,255,0.6)', marginTop: 2 }}>Fale conosco no WhatsApp.</div>
               </div>
-            </div>
+            </a>
           </div>
         </div>
         <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--bg)' }}>
@@ -1202,6 +1238,7 @@ export default function App() {
   const [funcionarios, setFuncionarios] = useState([]);
   const [horas, setHoras] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
+  const [logo, setLogo] = useState('');
   const [screen, setScreen] = useState('dashboard'); // dashboard | perfil | relatorios | usuarios | financeiro
   const [perfilId, setPerfilId] = useState(null);
   const [modalFuncionario, setModalFuncionario] = useState(null); // null | 'new' | funcionario obj
@@ -1220,6 +1257,7 @@ export default function App() {
         setFuncionarios(fs);
         setHoras(hs);
         setLancamentos(ls);
+        db.getLogo().then(setLogo).catch(() => {}); // tabela config é opcional; não bloqueia o carregamento
         setLoaded(true);
       } catch (e) {
         console.error(e);
@@ -1227,6 +1265,14 @@ export default function App() {
       }
     })();
   }, []);
+
+  const uploadLogo = async (file) => {
+    try {
+      const dataUrl = await resizeImage(file, 200);
+      setLogo(dataUrl);
+      await db.salvarLogo(dataUrl);
+    } catch (e) { console.error(e); }
+  };
 
   const handleLogin = ({ email, senha }) => {
     const u = usuarios.find((x) => x.email.toLowerCase() === email.toLowerCase());
@@ -1382,6 +1428,8 @@ export default function App() {
         onLogout={() => window.location.reload()}
         podeGerenciarUsuarios={podeGerenciarUsuarios}
         pendentesCount={pendentesCount}
+        logo={logo}
+        onUploadLogo={uploadLogo}
       >
         {screen === 'dashboard' && (
           <Dashboard
