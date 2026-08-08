@@ -6,7 +6,7 @@ import {
   Users, Clock, Coins, Calendar as CalendarIcon, Plus, X, Pencil, Trash2,
   LogOut, FileText, Printer, ChevronLeft, ChevronRight, Phone, Briefcase,
   Camera, ArrowLeft, Check, AlertTriangle, UserPlus, Crown, ShieldCheck, ShieldX,
-  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, LayoutDashboard, Headphones, Share2
+  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle, LayoutDashboard, Headphones, Share2, Menu
 } from 'lucide-react';
 
 /* ============================== HELPERS ============================== */
@@ -432,6 +432,35 @@ const GlobalStyle = () => (
     .pc-table th { text-align: left; font-family: 'Oswald', sans-serif; text-transform: uppercase; font-size: 11px; letter-spacing: 0.06em; color: var(--ink-soft); border-bottom: 2px solid var(--navy); padding: 8px 10px; }
     .pc-table td { padding: 8px 10px; border-bottom: 1px dashed var(--line); }
     .pc-table tbody tr:hover { background: rgba(221,90,30,0.05); }
+    .pc-table-wrap { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+
+    .pc-topbar { padding: 16px 24px; }
+    .pc-hamburger { display: none; }
+    .pc-sidebar {
+      width: 236px; flex-shrink: 0; background: var(--navy); display: flex; flex-direction: column; padding: 18px 12px;
+    }
+    .pc-sidebar-backdrop { display: none; }
+
+    @media (max-width: 860px) {
+      .pc-topbar { padding: 12px 14px; }
+      .pc-hamburger { display: inline-flex; }
+      .pc-sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0; z-index: 45; width: 250px;
+        transform: translateX(-100%); transition: transform 0.22s ease; box-shadow: 10px 0 30px rgba(0,0,0,0.35);
+        overflow-y: auto;
+      }
+      .pc-sidebar.open { transform: translateX(0); }
+      .pc-sidebar-backdrop.open {
+        display: block; position: fixed; inset: 0; background: rgba(10,16,26,0.55); z-index: 40;
+      }
+      .pc-content { padding: 16px !important; }
+      .pc-logo-text { font-size: 12px !important; }
+      .pc-logo-title { font-size: 10.5px !important; }
+      .pc-sair-label { display: none; }
+    }
+    @media (max-width: 480px) {
+      .pc-form-grid-2 { grid-template-columns: 1fr !important; }
+    }
 
     @media print {
       .no-print { display: none !important; }
@@ -572,6 +601,7 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
   const logoInputRef = useRef(null);
   const [editandoNome, setEditandoNome] = useState(false);
   const [nomeRascunho, setNomeRascunho] = useState(nomeEmpresa);
+  const [menuAberto, setMenuAberto] = useState(false);
   useEffect(() => { if (!editandoNome) setNomeRascunho(nomeEmpresa); }, [nomeEmpresa]);
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -586,17 +616,22 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
     setEditandoNome(false);
   };
 
+  const navegar = (key) => { onNavigate(key); setMenuAberto(false); };
+
   return (
     <div className="pc-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       <GlobalStyle />
-      <div className="no-print" style={{ background: 'var(--navy)', color: 'white', padding: '16px 24px', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', zIndex: 20 }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: 16 }}>
+      <div className="no-print pc-topbar" style={{ background: 'var(--navy)', color: 'white', display: 'flex', alignItems: 'center', justifyContent: 'space-between', boxShadow: '0 2px 12px rgba(0,0,0,0.18)', zIndex: 20 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14, minWidth: 0 }}>
+          <button className="pc-hamburger pc-btn pc-btn-ghost" style={{ color: 'white', padding: 8 }} onClick={() => setMenuAberto(true)}>
+            <Menu size={20} />
+          </button>
           <div
             onClick={() => podeGerenciarUsuarios && logoInputRef.current && logoInputRef.current.click()}
             title={podeGerenciarUsuarios ? 'Clique para trocar a logo' : undefined}
             className={logo ? '' : 'pc-stamp'}
             style={{
-              width: logo ? 'auto' : 62, minWidth: 62, maxWidth: 190, height: 56, fontSize: 15,
+              width: logo ? 'auto' : 62, minWidth: logo ? 44 : 62, maxWidth: 190, height: logo ? 44 : 62, fontSize: 15,
               borderColor: 'white', color: 'white', flexShrink: 0,
               cursor: podeGerenciarUsuarios ? 'pointer' : 'default', position: 'relative', overflow: 'hidden',
               borderRadius: logo ? 8 : '50%', display: 'flex', alignItems: 'center', justifyContent: 'center',
@@ -615,7 +650,7 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
             <input ref={logoInputRef} type="file" accept="image/*" style={{ display: 'none' }}
               onChange={(e) => { if (e.target.files[0]) onUploadLogo(e.target.files[0]); e.target.value = ''; }} />
           )}
-          <div>
+          <div style={{ minWidth: 0 }}>
             {editandoNome ? (
               <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                 <input
@@ -624,32 +659,36 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
                   onChange={(e) => setNomeRascunho(e.target.value)}
                   onKeyDown={(e) => { if (e.key === 'Enter') salvarNome(); if (e.key === 'Escape') { setNomeRascunho(nomeEmpresa); setEditandoNome(false); } }}
                   className="mono"
-                  style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 4, color: 'white', fontSize: 13, padding: '4px 8px', width: 220 }}
+                  style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 4, color: 'white', fontSize: 13, padding: '4px 8px', width: '100%', maxWidth: 220 }}
                 />
-                <button onClick={salvarNome} className="pc-btn pc-btn-primary" style={{ padding: '5px 8px' }}><Check size={13} /></button>
-                <button onClick={() => { setNomeRascunho(nomeEmpresa); setEditandoNome(false); }} className="pc-btn pc-btn-ghost" style={{ color: 'white', padding: '5px 8px' }}><X size={13} /></button>
+                <button onClick={salvarNome} className="pc-btn pc-btn-primary" style={{ padding: '5px 8px', flexShrink: 0 }}><Check size={13} /></button>
+                <button onClick={() => { setNomeRascunho(nomeEmpresa); setEditandoNome(false); }} className="pc-btn pc-btn-ghost" style={{ color: 'white', padding: '5px 8px', flexShrink: 0 }}><X size={13} /></button>
               </div>
             ) : (
               <div
                 onClick={() => podeGerenciarUsuarios && setEditandoNome(true)}
                 title={podeGerenciarUsuarios ? 'Clique para alterar o nome da empresa' : undefined}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: podeGerenciarUsuarios ? 'pointer' : 'default' }}>
-                <div className="disp" style={{ fontSize: 14, lineHeight: 1.35 }}>{(nomeEmpresa || 'CONSTRUÇÕES PAULO C').toUpperCase()} —</div>
-                {podeGerenciarUsuarios && <Pencil size={11} color="rgba(255,255,255,0.5)" />}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: podeGerenciarUsuarios ? 'pointer' : 'default', minWidth: 0 }}>
+                <div className="disp pc-logo-text" style={{ fontSize: 14, lineHeight: 1.35, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{(nomeEmpresa || 'CONSTRUÇÕES PAULO C').toUpperCase()} —</div>
+                {podeGerenciarUsuarios && <Pencil size={11} color="rgba(255,255,255,0.5)" style={{ flexShrink: 0 }} />}
               </div>
             )}
-            <div className="disp" style={{ fontSize: 12, color: 'var(--orange)', letterSpacing: '0.1em' }}>{title}</div>
+            <div className="disp pc-logo-title" style={{ fontSize: 12, color: 'var(--orange)', letterSpacing: '0.1em' }}>{title}</div>
           </div>
         </div>
-        <button onClick={onLogout} className="pc-btn pc-btn-ghost" style={{ color: 'white' }}><LogOut size={15} /> Sair</button>
+        <button onClick={onLogout} className="pc-btn pc-btn-ghost" style={{ color: 'white', flexShrink: 0 }}><LogOut size={15} /> <span className="pc-sair-label">Sair</span></button>
       </div>
-      <div style={{ display: 'flex', flex: 1, minHeight: 0 }}>
-        <div className="no-print" style={{ width: 236, flexShrink: 0, background: 'var(--navy)', display: 'flex', flexDirection: 'column', padding: '18px 12px' }}>
+      <div style={{ display: 'flex', flex: 1, minHeight: 0, position: 'relative' }}>
+        <div className={`pc-sidebar-backdrop ${menuAberto ? 'open' : ''}`} onClick={() => setMenuAberto(false)} />
+        <div className={`no-print pc-sidebar ${menuAberto ? 'open' : ''}`}>
+          <div style={{ display: 'flex', justifyContent: 'flex-end', marginBottom: 6 }} className="pc-hamburger">
+            <button className="pc-btn pc-btn-ghost" style={{ color: 'white', padding: 6 }} onClick={() => setMenuAberto(false)}><X size={18} /></button>
+          </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 3 }}>
             {navItems.map((item) => {
               const active = activeScreen === item.key;
               return (
-                <button key={item.key} onClick={() => onNavigate(item.key)}
+                <button key={item.key} onClick={() => navegar(item.key)}
                   style={{
                     display: 'flex', alignItems: 'center', gap: 11, padding: '11px 14px', borderRadius: 6,
                     border: 'none', cursor: 'pointer', width: '100%', textAlign: 'left', position: 'relative',
@@ -681,8 +720,8 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
             </a>
           </div>
         </div>
-        <div style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--bg)' }}>
-          <div style={{ padding: 24, maxWidth: 1200, margin: '0 auto' }}>
+        <div className="pc-content" style={{ flex: 1, minWidth: 0, overflowY: 'auto', background: 'var(--bg)', padding: 24 }}>
+          <div style={{ maxWidth: 1200, margin: '0 auto' }}>
             {children}
           </div>
         </div>
@@ -767,7 +806,7 @@ function FuncionarioModal({ funcionario, onSave, onClose }) {
               <label className="pc-label">Nome *</label>
               <input className="pc-input" value={form.nome} onChange={(e) => setForm({ ...form, nome: e.target.value })} required />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div className="pc-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
               <div>
                 <label className="pc-label">Telefone (com código do país)</label>
                 <input className="pc-input" value={form.telefone} onChange={(e) => setForm({ ...form, telefone: e.target.value })} placeholder="Ex: 5565912345678" />
@@ -777,7 +816,7 @@ function FuncionarioModal({ funcionario, onSave, onClose }) {
                 <input className="pc-input" value={form.cargo} onChange={(e) => setForm({ ...form, cargo: e.target.value })} />
               </div>
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
+            <div className="pc-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 12 }}>
               <div>
                 <label className="pc-label">Valor / hora (€) *</label>
                 <input className="pc-input" type="number" step="0.01" min="0" value={form.valorHora} onChange={(e) => setForm({ ...form, valorHora: e.target.value })} required />
@@ -1173,21 +1212,23 @@ function Relatorios({ funcionarios, horas, logo, nomeEmpresa }) {
               <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>{l.funcionario.nome}</span>
               <span style={{ fontSize: 12, color: 'var(--ink-soft)' }}>{l.dias} dia(s) trabalhado(s) · {euro(l.valorHora)}/h</span>
             </div>
-            <table className="pc-table">
-              <thead>
-                <tr><th>Data</th><th>Horas</th><th>Observação</th><th style={{ textAlign: 'right' }}>Valor</th></tr>
-              </thead>
-              <tbody>
-                {l.entries.map((e) => (
-                  <tr key={e.id}>
-                    <td>{e.data.split('-').reverse().join('/')}</td>
-                    <td>{e.horas}h</td>
-                    <td style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>{e.observacao || '—'}</td>
-                    <td style={{ textAlign: 'right' }}>{euro(e.horas * l.valorHora)}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <div className="pc-table-wrap">
+              <table className="pc-table">
+                <thead>
+                  <tr><th>Data</th><th>Horas</th><th>Observação</th><th style={{ textAlign: 'right' }}>Valor</th></tr>
+                </thead>
+                <tbody>
+                  {l.entries.map((e) => (
+                    <tr key={e.id}>
+                      <td>{e.data.split('-').reverse().join('/')}</td>
+                      <td>{e.horas}h</td>
+                      <td style={{ fontFamily: "'IBM Plex Sans', sans-serif" }}>{e.observacao || '—'}</td>
+                      <td style={{ textAlign: 'right' }}>{euro(e.horas * l.valorHora)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
             <div style={{ display: 'flex', justifyContent: 'flex-end', gap: 24, marginTop: 10, paddingTop: 10, borderTop: '2px solid var(--navy)' }}>
               <span className="mono" style={{ fontSize: 13 }}>Total horas: <strong>{l.totalHoras.toFixed(2).replace('.00','')}</strong></span>
               <span className="mono" style={{ fontSize: 13, color: 'var(--orange-dark)' }}>Total a receber: <strong>{euro(l.totalReceber)}</strong></span>
@@ -1258,7 +1299,7 @@ function LancamentoModal({ lancamento, onSave, onClose }) {
               <label className="pc-label">Descrição (opcional)</label>
               <textarea className="pc-input" rows={2} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} style={{ resize: 'vertical' }} />
             </div>
-            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+            <div className="pc-form-grid-2" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
               <div>
                 <label className="pc-label">Valor (€) *</label>
                 <input className="pc-input mono" type="number" step="0.01" min="0" value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} required />
