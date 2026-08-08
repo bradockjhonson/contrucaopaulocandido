@@ -77,7 +77,7 @@ const slugify = (s) => (s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, ''
 
 const soDigitos = (tel) => (tel || '').replace(/\D/g, '');
 
-async function buildRelatorioPdf(linha, periodoLabel, logo) {
+async function buildRelatorioPdf(linha, periodoLabel, logo, nomeEmpresa) {
   const doc = new jsPDF();
   const pageW = doc.internal.pageSize.getWidth();
   const NAVY = [22, 40, 63];
@@ -103,7 +103,7 @@ async function buildRelatorioPdf(linha, periodoLabel, logo) {
   doc.setTextColor(255, 255, 255);
   doc.setFontSize(16);
   doc.setFont(undefined, 'bold');
-  doc.text('CONSTRUÇÕES PAULO C', 14, 16);
+  doc.text((nomeEmpresa || 'Construções Paulo C').toUpperCase(), 14, 16);
   doc.setFontSize(10);
   doc.setFont(undefined, 'normal');
   doc.setTextColor(255, 190, 160);
@@ -162,14 +162,14 @@ async function buildRelatorioPdf(linha, periodoLabel, logo) {
   return doc;
 }
 
-async function compartilharRelatorioWhatsapp(linha, periodoLabel, logo, avisar) {
+async function compartilharRelatorioWhatsapp(linha, periodoLabel, logo, nomeEmpresa, avisar) {
   const numero = soDigitos(linha.funcionario.telefone);
   if (!numero || numero.length < 8) {
     avisar(`Cadastre o telefone de ${linha.funcionario.nome} (com o código do país, ex: 5565912345678) para poder compartilhar por WhatsApp.`);
     return;
   }
 
-  const doc = await buildRelatorioPdf(linha, periodoLabel, logo);
+  const doc = await buildRelatorioPdf(linha, periodoLabel, logo, nomeEmpresa);
   const fileName = `relatorio-${slugify(linha.funcionario.nome)}.pdf`;
   const blob = doc.output('blob');
 
@@ -290,13 +290,17 @@ const db = {
     if (error) throw error;
   },
 
-  async getLogo() {
-    const { data, error } = await supabase.from('config').select('logo').eq('id', 'app').maybeSingle();
+  async getConfig() {
+    const { data, error } = await supabase.from('config').select('*').eq('id', 'app').maybeSingle();
     if (error) throw error;
-    return data ? data.logo || '' : '';
+    return { logo: data?.logo || '', nomeEmpresa: data?.nome_empresa || '' };
   },
   async salvarLogo(logoBase64) {
-    const { error } = await supabase.from('config').upsert({ id: 'app', logo: logoBase64 });
+    const { error } = await supabase.from('config').upsert({ id: 'app', logo: logoBase64 }, { onConflict: 'id' });
+    if (error) throw error;
+  },
+  async salvarNomeEmpresa(nome) {
+    const { error } = await supabase.from('config').upsert({ id: 'app', nome_empresa: nome }, { onConflict: 'id' });
     if (error) throw error;
   },
 };
@@ -476,7 +480,7 @@ function Confirm({ text, onConfirm, onCancel, confirmLabel = 'Excluir', confirmC
 
 /* ============================== LOGIN ============================== */
 
-function LoginScreen({ onLogin, onRequestAccess, requestSent }) {
+function LoginScreen({ onLogin, onRequestAccess, requestSent, logo, nomeEmpresa }) {
   const [aba, setAba] = useState('entrar'); // 'entrar' | 'solicitar'
   const [email, setEmail] = useState('');
   const [senha, setSenha] = useState('');
@@ -505,8 +509,14 @@ function LoginScreen({ onLogin, onRequestAccess, requestSent }) {
       <div className="pc-crop" style={{ position: 'relative', width: '100%', maxWidth: 380, background: 'var(--paper)', borderRadius: 6, padding: 32 }}>
         <div className="cc2" />
         <div style={{ textAlign: 'center', marginBottom: 20 }}>
-          <div className="pc-stamp" style={{ width: 56, height: 56, margin: '0 auto 14px', fontSize: 20 }}>PC</div>
-          <h1 className="disp" style={{ fontSize: 20, margin: 0, color: 'var(--navy)' }}>Construções Paulo C</h1>
+          {logo ? (
+            <div style={{ width: 130, height: 60, margin: '0 auto 14px', background: 'white', borderRadius: 8, display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 6, border: '1px solid var(--line)' }}>
+              <img src={logo} alt="Logo" style={{ maxWidth: '100%', maxHeight: '100%', objectFit: 'contain' }} />
+            </div>
+          ) : (
+            <div className="pc-stamp" style={{ width: 56, height: 56, margin: '0 auto 14px', fontSize: 20 }}>PC</div>
+          )}
+          <h1 className="disp" style={{ fontSize: 20, margin: 0, color: 'var(--navy)' }}>{nomeEmpresa || 'Construções Paulo C'}</h1>
           <p className="pc-label" style={{ marginTop: 6 }}>Gestão de Funcionários &amp; Horas</p>
         </div>
 
@@ -558,14 +568,23 @@ function LoginScreen({ onLogin, onRequestAccess, requestSent }) {
 
 /* ============================== TOP BAR ============================== */
 
-function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsuarios, pendentesCount, logo, onUploadLogo, children }) {
+function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsuarios, pendentesCount, logo, onUploadLogo, nomeEmpresa, onChangeNomeEmpresa, children }) {
   const logoInputRef = useRef(null);
+  const [editandoNome, setEditandoNome] = useState(false);
+  const [nomeRascunho, setNomeRascunho] = useState(nomeEmpresa);
+  useEffect(() => { if (!editandoNome) setNomeRascunho(nomeEmpresa); }, [nomeEmpresa]);
   const navItems = [
     { key: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { key: 'financeiro', label: 'Financeiro', icon: Wallet },
     { key: 'relatorios', label: 'Relatórios', icon: FileText },
   ];
   if (podeGerenciarUsuarios) navItems.push({ key: 'usuarios', label: 'Usuários', icon: Users, badge: pendentesCount });
+
+  const salvarNome = () => {
+    const nome = nomeRascunho.trim();
+    if (nome && nome !== nomeEmpresa) onChangeNomeEmpresa(nome);
+    setEditandoNome(false);
+  };
 
   return (
     <div className="pc-root" style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
@@ -597,7 +616,28 @@ function AppShell({ title, activeScreen, onNavigate, onLogout, podeGerenciarUsua
               onChange={(e) => { if (e.target.files[0]) onUploadLogo(e.target.files[0]); e.target.value = ''; }} />
           )}
           <div>
-            <div className="disp" style={{ fontSize: 14, lineHeight: 1.35 }}>CONSTRUÇÕES PAULO C —</div>
+            {editandoNome ? (
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                <input
+                  autoFocus
+                  value={nomeRascunho}
+                  onChange={(e) => setNomeRascunho(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === 'Enter') salvarNome(); if (e.key === 'Escape') { setNomeRascunho(nomeEmpresa); setEditandoNome(false); } }}
+                  className="mono"
+                  style={{ background: 'rgba(255,255,255,0.12)', border: '1px solid rgba(255,255,255,0.3)', borderRadius: 4, color: 'white', fontSize: 13, padding: '4px 8px', width: 220 }}
+                />
+                <button onClick={salvarNome} className="pc-btn pc-btn-primary" style={{ padding: '5px 8px' }}><Check size={13} /></button>
+                <button onClick={() => { setNomeRascunho(nomeEmpresa); setEditandoNome(false); }} className="pc-btn pc-btn-ghost" style={{ color: 'white', padding: '5px 8px' }}><X size={13} /></button>
+              </div>
+            ) : (
+              <div
+                onClick={() => podeGerenciarUsuarios && setEditandoNome(true)}
+                title={podeGerenciarUsuarios ? 'Clique para alterar o nome da empresa' : undefined}
+                style={{ display: 'flex', alignItems: 'center', gap: 7, cursor: podeGerenciarUsuarios ? 'pointer' : 'default' }}>
+                <div className="disp" style={{ fontSize: 14, lineHeight: 1.35 }}>{(nomeEmpresa || 'CONSTRUÇÕES PAULO C').toUpperCase()} —</div>
+                {podeGerenciarUsuarios && <Pencil size={11} color="rgba(255,255,255,0.5)" />}
+              </div>
+            )}
             <div className="disp" style={{ fontSize: 12, color: 'var(--orange)', letterSpacing: '0.1em' }}>{title}</div>
           </div>
         </div>
@@ -1013,7 +1053,7 @@ function PerfilFuncionario({ funcionario, horas, onBack, onEdit, onDelete, onSav
 
 /* ============================== RELATORIOS ============================== */
 
-function Relatorios({ funcionarios, horas, logo }) {
+function Relatorios({ funcionarios, horas, logo, nomeEmpresa }) {
   const now = todayObj();
   const [filtroFunc, setFiltroFunc] = useState('todos');
   const [mesRef, setMesRef] = useState(`${now.y}-${pad2(now.m + 1)}`);
@@ -1063,7 +1103,7 @@ function Relatorios({ funcionarios, horas, logo }) {
     if (!linhaSelecionada) return;
     setEnviando(true);
     setAviso('');
-    await compartilharRelatorioWhatsapp(linhaSelecionada, periodoLabel, logo, setAviso);
+    await compartilharRelatorioWhatsapp(linhaSelecionada, periodoLabel, logo, nomeEmpresa, setAviso);
     setEnviando(false);
   };
 
@@ -1399,6 +1439,7 @@ export default function App() {
   const [horas, setHoras] = useState([]);
   const [lancamentos, setLancamentos] = useState([]);
   const [logo, setLogo] = useState('');
+  const [nomeEmpresa, setNomeEmpresa] = useState('');
   const [screen, setScreen] = useState('dashboard'); // dashboard | perfil | relatorios | usuarios | financeiro
   const [perfilId, setPerfilId] = useState(null);
   const [modalFuncionario, setModalFuncionario] = useState(null); // null | 'new' | funcionario obj
@@ -1417,7 +1458,7 @@ export default function App() {
         setFuncionarios(fs);
         setHoras(hs);
         setLancamentos(ls);
-        db.getLogo().then(setLogo).catch(() => {}); // tabela config é opcional; não bloqueia o carregamento
+        db.getConfig().then((cfg) => { setLogo(cfg.logo); setNomeEmpresa(cfg.nomeEmpresa); }).catch(() => {}); // tabela config é opcional; não bloqueia o carregamento
         setLoaded(true);
       } catch (e) {
         console.error(e);
@@ -1432,6 +1473,11 @@ export default function App() {
       setLogo(dataUrl);
       await db.salvarLogo(dataUrl);
     } catch (e) { console.error(e); }
+  };
+
+  const alterarNomeEmpresa = (nome) => {
+    setNomeEmpresa(nome);
+    db.salvarNomeEmpresa(nome).catch(console.error);
   };
 
   const handleLogin = ({ email, senha }) => {
@@ -1569,7 +1615,7 @@ export default function App() {
   const currentUser = usuarios.find((u) => u.id === currentUserId);
 
   if (!currentUser) {
-    return <LoginScreen onLogin={handleLogin} onRequestAccess={handleRequestAccess} requestSent={requestSent} />;
+    return <LoginScreen onLogin={handleLogin} onRequestAccess={handleRequestAccess} requestSent={requestSent} logo={logo} nomeEmpresa={nomeEmpresa} />;
   }
 
   const perfil = funcionarios.find((f) => f.id === perfilId);
@@ -1590,6 +1636,8 @@ export default function App() {
         pendentesCount={pendentesCount}
         logo={logo}
         onUploadLogo={uploadLogo}
+        nomeEmpresa={nomeEmpresa}
+        onChangeNomeEmpresa={alterarNomeEmpresa}
       >
         {screen === 'dashboard' && (
           <Dashboard
@@ -1632,7 +1680,7 @@ export default function App() {
           />
         )}
         {screen === 'relatorios' && (
-          <Relatorios funcionarios={funcionarios} horas={horas} logo={logo} />
+          <Relatorios funcionarios={funcionarios} horas={horas} logo={logo} nomeEmpresa={nomeEmpresa} />
         )}
       </AppShell>
       {modalFuncionario && (
