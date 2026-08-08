@@ -3,7 +3,8 @@ import { supabase } from './supabaseClient.js';
 import {
   Users, Clock, Coins, Calendar as CalendarIcon, Plus, X, Pencil, Trash2,
   LogOut, FileText, Printer, ChevronLeft, ChevronRight, Phone, Briefcase,
-  Camera, ArrowLeft, Check, AlertTriangle, UserPlus, Crown, ShieldCheck, ShieldX
+  Camera, ArrowLeft, Check, AlertTriangle, UserPlus, Crown, ShieldCheck, ShieldX,
+  TrendingUp, TrendingDown, Wallet, ArrowUpCircle, ArrowDownCircle
 } from 'lucide-react';
 
 /* ============================== HELPERS ============================== */
@@ -73,6 +74,8 @@ const funcToDb = (f) => ({
 });
 const horaFromDb = (r) => ({ id: r.id, funcionarioId: r.funcionario_id, data: r.data, horas: Number(r.horas), observacao: r.observacao || '' });
 const usuarioFromDb = (r) => ({ id: r.id, nome: r.nome || '', email: r.email, senha: r.senha, role: r.role, status: r.status });
+const lancFromDb = (r) => ({ id: r.id, tipo: r.tipo, categoria: r.categoria || '', descricao: r.descricao || '', valor: Number(r.valor) || 0, data: r.data });
+const lancToDb = (l) => ({ tipo: l.tipo, categoria: l.categoria || null, descricao: l.descricao || null, valor: l.valor, data: l.data });
 
 /* ---------- Camada de dados (Supabase) ---------- */
 
@@ -128,6 +131,26 @@ const db = {
   },
   async removerHora(funcionarioId, data) {
     const { error } = await supabase.from('horas_trabalhadas').delete().eq('funcionario_id', funcionarioId).eq('data', data);
+    if (error) throw error;
+  },
+
+  async listarLancamentos() {
+    const { data, error } = await supabase.from('lancamentos').select('*').order('data', { ascending: false });
+    if (error) throw error;
+    return (data || []).map(lancFromDb);
+  },
+  async salvarLancamento(l) {
+    if (l.id && l.__existe) {
+      const { error } = await supabase.from('lancamentos').update(lancToDb(l)).eq('id', l.id);
+      if (error) throw error;
+      return l.id;
+    }
+    const { data, error } = await supabase.from('lancamentos').insert(lancToDb(l)).select().single();
+    if (error) throw error;
+    return data.id;
+  },
+  async removerLancamento(id) {
+    const { error } = await supabase.from('lancamentos').delete().eq('id', id);
     if (error) throw error;
   },
 };
@@ -584,7 +607,7 @@ function DiaModal({ data, entrada, onSave, onDelete, onClose }) {
 
 /* ============================== DASHBOARD ============================== */
 
-function Dashboard({ funcionarios, horas, onOpenFuncionario, onNovoFuncionario, onAbrirRelatorios, onAbrirUsuarios, podeGerenciarUsuarios, pendentesCount }) {
+function Dashboard({ funcionarios, horas, lancamentos, onOpenFuncionario, onNovoFuncionario, onAbrirRelatorios, onAbrirUsuarios, onAbrirFinanceiro, podeGerenciarUsuarios, pendentesCount }) {
   const [cur, setCur] = useState(todayObj());
 
   const horasDoMes = useMemo(() => {
@@ -598,6 +621,14 @@ function Dashboard({ funcionarios, horas, onOpenFuncionario, onNovoFuncionario, 
     return s + h.horas * (f ? f.valorHora : 0);
   }, 0);
 
+  const lancamentosDoMes = useMemo(() => {
+    const prefix = `${cur.y}-${pad2(cur.m + 1)}`;
+    return lancamentos.filter((l) => l.data.startsWith(prefix));
+  }, [lancamentos, cur]);
+  const totalEntradasMes = lancamentosDoMes.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+  const totalSaidasMes = lancamentosDoMes.filter((l) => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+  const lucroMes = totalEntradasMes - totalSaidasMes - totalFolhaMes;
+
   const horasPorDia = useMemo(() => {
     const map = {};
     horasDoMes.forEach((h) => { map[h.data] = (map[h.data] || 0) + h.horas; });
@@ -608,20 +639,26 @@ function Dashboard({ funcionarios, horas, onOpenFuncionario, onNovoFuncionario, 
     <div className="pc-root" style={{ minHeight: '100vh' }}>
       <GlobalStyle />
       <TopBar title="Construções Paulo C — Dashboard" onLogout={() => window.location.reload()}
-        right={podeGerenciarUsuarios && (
-          <button className="pc-btn pc-btn-ghost" style={{ color: 'white', position: 'relative' }} onClick={onAbrirUsuarios}>
-            <Users size={15} /> Usuários
-            {pendentesCount > 0 && (
-              <span className="mono" style={{ position: 'absolute', top: -4, right: -6, background: 'var(--orange)', color: 'white', fontSize: 10, borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>{pendentesCount}</span>
+        right={
+          <>
+            <button className="pc-btn pc-btn-ghost" style={{ color: 'white' }} onClick={onAbrirFinanceiro}><Wallet size={15} /> Financeiro</button>
+            {podeGerenciarUsuarios && (
+              <button className="pc-btn pc-btn-ghost" style={{ color: 'white', position: 'relative' }} onClick={onAbrirUsuarios}>
+                <Users size={15} /> Usuários
+                {pendentesCount > 0 && (
+                  <span className="mono" style={{ position: 'absolute', top: -4, right: -6, background: 'var(--orange)', color: 'white', fontSize: 10, borderRadius: 10, padding: '1px 5px', fontWeight: 700 }}>{pendentesCount}</span>
+                )}
+              </button>
             )}
-          </button>
-        )}
+          </>
+        }
       />
       <div style={{ padding: 20, maxWidth: 1100, margin: '0 auto' }}>
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 20 }}>
           <StatCard icon={Users} label="Funcionários" value={funcionarios.length} />
           <StatCard icon={Clock} label={`Horas — ${MESES[cur.m]}`} value={totalHorasMes.toFixed(2).replace('.00','')} />
           <StatCard icon={Coins} label={`Folha — ${MESES[cur.m]}`} value={euro(totalFolhaMes)} accent="var(--orange)" />
+          <StatCard icon={Wallet} label={`Lucro — ${MESES[cur.m]}`} value={euro(lucroMes)} accent={lucroMes >= 0 ? 'var(--ok)' : 'var(--off)'} />
         </div>
 
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16, marginBottom: 20 }} className="dash-grid">
@@ -907,6 +944,144 @@ function Relatorios({ funcionarios, horas, onBack }) {
   );
 }
 
+/* ============================== LANÇAMENTO FINANCEIRO (modal) ============================== */
+
+function LancamentoModal({ lancamento, onSave, onClose }) {
+  const [form, setForm] = useState(lancamento || {
+    tipo: 'entrada', categoria: '', descricao: '', valor: '', data: new Date().toISOString().slice(0, 10),
+  });
+
+  const submit = (e) => {
+    e.preventDefault();
+    if (!form.valor || !form.data) return;
+    onSave({ ...form, id: form.id || uid(), valor: parseFloat(form.valor) });
+  };
+
+  return (
+    <div className="pc-modal-overlay" onClick={onClose}>
+      <div className="pc-modal" style={{ maxWidth: 420 }} onClick={(e) => e.stopPropagation()}>
+        <div style={{ padding: 22 }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 18 }}>
+            <span className="disp" style={{ fontSize: 16, color: 'var(--navy)' }}>{lancamento ? 'Editar Lançamento' : 'Novo Lançamento'}</span>
+            <button className="pc-btn pc-btn-ghost" style={{ padding: 6 }} onClick={onClose}><X size={18} /></button>
+          </div>
+          <form onSubmit={submit}>
+            <div style={{ marginBottom: 16 }}>
+              <label className="pc-label">Tipo</label>
+              <div style={{ display: 'flex', gap: 8 }}>
+                <button type="button" onClick={() => setForm({ ...form, tipo: 'entrada' })}
+                  className="pc-btn" style={{
+                    flex: 1, justifyContent: 'center',
+                    background: form.tipo === 'entrada' ? 'var(--ok)' : 'transparent',
+                    color: form.tipo === 'entrada' ? 'white' : 'var(--ink)',
+                    border: `1.5px solid ${form.tipo === 'entrada' ? 'transparent' : 'var(--line)'}`,
+                  }}><ArrowUpCircle size={15} /> Entrada</button>
+                <button type="button" onClick={() => setForm({ ...form, tipo: 'saida' })}
+                  className="pc-btn" style={{
+                    flex: 1, justifyContent: 'center',
+                    background: form.tipo === 'saida' ? 'var(--off)' : 'transparent',
+                    color: form.tipo === 'saida' ? 'white' : 'var(--ink)',
+                    border: `1.5px solid ${form.tipo === 'saida' ? 'transparent' : 'var(--line)'}`,
+                  }}><ArrowDownCircle size={15} /> Saída</button>
+              </div>
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label className="pc-label">Categoria</label>
+              <input className="pc-input" value={form.categoria} onChange={(e) => setForm({ ...form, categoria: e.target.value })}
+                placeholder={form.tipo === 'entrada' ? 'Ex: Serviço prestado' : 'Ex: Material, combustível...'} />
+            </div>
+            <div style={{ marginBottom: 12 }}>
+              <label className="pc-label">Descrição (opcional)</label>
+              <textarea className="pc-input" rows={2} value={form.descricao} onChange={(e) => setForm({ ...form, descricao: e.target.value })} style={{ resize: 'vertical' }} />
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, marginBottom: 20 }}>
+              <div>
+                <label className="pc-label">Valor (€) *</label>
+                <input className="pc-input mono" type="number" step="0.01" min="0" value={form.valor} onChange={(e) => setForm({ ...form, valor: e.target.value })} required />
+              </div>
+              <div>
+                <label className="pc-label">Data *</label>
+                <input className="pc-input" type="date" value={form.data} onChange={(e) => setForm({ ...form, data: e.target.value })} required />
+              </div>
+            </div>
+            <div style={{ display: 'flex', gap: 8, justifyContent: 'flex-end' }}>
+              <button type="button" className="pc-btn pc-btn-ghost" onClick={onClose}>Cancelar</button>
+              <button type="submit" className="pc-btn pc-btn-primary"><Check size={15} /> Salvar</button>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ============================== FINANCEIRO ============================== */
+
+function Financeiro({ lancamentos, onBack, onNovo, onEditar, onExcluir }) {
+  const now = todayObj();
+  const [mesRef, setMesRef] = useState(`${now.y}-${pad2(now.m + 1)}`);
+  const [confirmDel, setConfirmDel] = useState(null);
+
+  const doMes = useMemo(
+    () => lancamentos.filter((l) => l.data.startsWith(mesRef)).sort((a, b) => b.data.localeCompare(a.data)),
+    [lancamentos, mesRef]
+  );
+  const totalEntradas = doMes.filter((l) => l.tipo === 'entrada').reduce((s, l) => s + l.valor, 0);
+  const totalSaidas = doMes.filter((l) => l.tipo === 'saida').reduce((s, l) => s + l.valor, 0);
+  const saldo = totalEntradas - totalSaidas;
+
+  return (
+    <div className="pc-root" style={{ minHeight: '100vh' }}>
+      <GlobalStyle />
+      <TopBar title="Financeiro" onBack={onBack} onLogout={() => window.location.reload()}
+        right={<button className="pc-btn pc-btn-ghost" style={{ color: 'white' }} onClick={onNovo}><Plus size={15} /> Novo</button>} />
+      <div style={{ padding: 20, maxWidth: 900, margin: '0 auto' }}>
+        <div style={{ marginBottom: 18 }}>
+          <label className="pc-label">Mês de referência</label>
+          <input className="pc-input" type="month" value={mesRef} onChange={(e) => setMesRef(e.target.value)} style={{ maxWidth: 200 }} />
+        </div>
+
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))', gap: 14, marginBottom: 20 }}>
+          <StatCard icon={TrendingUp} label="Entradas" value={euro(totalEntradas)} accent="var(--ok)" />
+          <StatCard icon={TrendingDown} label="Saídas" value={euro(totalSaidas)} accent="var(--off)" />
+          <StatCard icon={Wallet} label="Saldo do mês" value={euro(saldo)} accent={saldo >= 0 ? 'var(--ok)' : 'var(--off)'} />
+        </div>
+
+        <div className="pc-card" style={{ padding: 16 }}>
+          <span className="disp" style={{ fontSize: 15, color: 'var(--navy)' }}>Lançamentos do mês</span>
+          <div style={{ marginTop: 12, display: 'flex', flexDirection: 'column', gap: 8 }}>
+            {doMes.length === 0 && <p style={{ fontSize: 13, color: 'var(--ink-soft)', margin: 0 }}>Nenhum lançamento neste mês ainda.</p>}
+            {doMes.map((l) => (
+              <div key={l.id} className="pc-row-hover" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', border: '1px solid var(--line)', borderRadius: 4, background: 'var(--white)', flexWrap: 'wrap' }}>
+                {l.tipo === 'entrada'
+                  ? <ArrowUpCircle size={20} color="var(--ok)" style={{ flexShrink: 0 }} />
+                  : <ArrowDownCircle size={20} color="var(--off)" style={{ flexShrink: 0 }} />}
+                <div style={{ flex: 1, minWidth: 160 }}>
+                  <div style={{ fontSize: 13, fontWeight: 600 }}>{l.categoria || (l.tipo === 'entrada' ? 'Entrada' : 'Saída')}</div>
+                  <div style={{ fontSize: 11, color: 'var(--ink-soft)' }}>
+                    {l.data.split('-').reverse().join('/')}{l.descricao ? ` · ${l.descricao}` : ''}
+                  </div>
+                </div>
+                <span className="mono" style={{ fontSize: 14, fontWeight: 600, color: l.tipo === 'entrada' ? 'var(--ok)' : 'var(--off)' }}>
+                  {l.tipo === 'entrada' ? '+' : '−'} {euro(l.valor)}
+                </span>
+                <button className="pc-btn pc-btn-ghost" style={{ padding: 6 }} onClick={() => onEditar(l)}><Pencil size={14} /></button>
+                <button className="pc-btn pc-btn-ghost" style={{ padding: 6, color: 'var(--off)' }} onClick={() => setConfirmDel(l)}><Trash2 size={14} /></button>
+              </div>
+            ))}
+          </div>
+        </div>
+      </div>
+
+      {confirmDel && (
+        <Confirm text={`Excluir o lançamento "${confirmDel.categoria || (confirmDel.tipo === 'entrada' ? 'Entrada' : 'Saída')}" de ${euro(confirmDel.valor)}?`}
+          onConfirm={() => { onExcluir(confirmDel.id); setConfirmDel(null); }}
+          onCancel={() => setConfirmDel(null)} />
+      )}
+    </div>
+  );
+}
+
 /* ============================== PAINEL DE USUARIOS / ACESSO ============================== */
 
 function UsuariosPanel({ usuarios, currentUser, onBack, onAprovar, onRecusar, onPromover, onTransferirPosse, onRemover }) {
@@ -996,9 +1171,11 @@ export default function App() {
   const [requestSent, setRequestSent] = useState(false);
   const [funcionarios, setFuncionarios] = useState([]);
   const [horas, setHoras] = useState([]);
-  const [screen, setScreen] = useState('dashboard'); // dashboard | perfil | relatorios | usuarios
+  const [lancamentos, setLancamentos] = useState([]);
+  const [screen, setScreen] = useState('dashboard'); // dashboard | perfil | relatorios | usuarios | financeiro
   const [perfilId, setPerfilId] = useState(null);
   const [modalFuncionario, setModalFuncionario] = useState(null); // null | 'new' | funcionario obj
+  const [modalLancamento, setModalLancamento] = useState(null); // null | 'new' | lancamento obj
 
   useEffect(() => {
     (async () => {
@@ -1008,10 +1185,11 @@ export default function App() {
           const criado = await db.criarUsuario({ nome: 'Eduardo', email: OWNER_SEED.email, senha: OWNER_SEED.senha, role: 'owner', status: 'aprovado' });
           us = [criado];
         }
-        const [fs, hs] = await Promise.all([db.listarFuncionarios(), db.listarHoras()]);
+        const [fs, hs, ls] = await Promise.all([db.listarFuncionarios(), db.listarHoras(), db.listarLancamentos()]);
         setUsuarios(us);
         setFuncionarios(fs);
         setHoras(hs);
+        setLancamentos(ls);
         setLoaded(true);
       } catch (e) {
         console.error(e);
@@ -1110,6 +1288,27 @@ export default function App() {
     db.removerHora(funcionarioId, data).catch(console.error);
   };
 
+  const saveLancamento = (l) => {
+    const existe = lancamentos.some((x) => x.id === l.id);
+    (async () => {
+      try {
+        if (existe) {
+          await db.salvarLancamento({ ...l, __existe: true });
+          setLancamentos((list) => list.map((x) => x.id === l.id ? l : x));
+        } else {
+          const novoId = await db.salvarLancamento(l);
+          setLancamentos((list) => [{ ...l, id: novoId }, ...list]);
+        }
+      } catch (e) { console.error(e); }
+    })();
+    setModalLancamento(null);
+  };
+
+  const deleteLancamento = (id) => {
+    setLancamentos((list) => list.filter((l) => l.id !== id));
+    db.removerLancamento(id).catch(console.error);
+  };
+
   if (erroConexao) {
     return (
       <div className="pc-root" style={{ minHeight: '100vh', display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'var(--navy, #16283F)', padding: 20 }}>
@@ -1147,12 +1346,23 @@ export default function App() {
         <Dashboard
           funcionarios={funcionarios}
           horas={horas}
+          lancamentos={lancamentos}
           onOpenFuncionario={(id) => { setPerfilId(id); setScreen('perfil'); }}
           onNovoFuncionario={() => setModalFuncionario('new')}
           onAbrirRelatorios={() => setScreen('relatorios')}
           onAbrirUsuarios={() => setScreen('usuarios')}
+          onAbrirFinanceiro={() => setScreen('financeiro')}
           podeGerenciarUsuarios={podeGerenciarUsuarios}
           pendentesCount={pendentesCount}
+        />
+      )}
+      {screen === 'financeiro' && (
+        <Financeiro
+          lancamentos={lancamentos}
+          onBack={() => setScreen('dashboard')}
+          onNovo={() => setModalLancamento('new')}
+          onEditar={(l) => setModalLancamento(l)}
+          onExcluir={deleteLancamento}
         />
       )}
       {screen === 'usuarios' && podeGerenciarUsuarios && (
@@ -1186,6 +1396,13 @@ export default function App() {
           funcionario={modalFuncionario === 'new' ? null : modalFuncionario}
           onSave={saveFuncionario}
           onClose={() => setModalFuncionario(null)}
+        />
+      )}
+      {modalLancamento && (
+        <LancamentoModal
+          lancamento={modalLancamento === 'new' ? null : modalLancamento}
+          onSave={saveLancamento}
+          onClose={() => setModalLancamento(null)}
         />
       )}
     </>
