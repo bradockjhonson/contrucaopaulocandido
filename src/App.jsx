@@ -176,7 +176,7 @@ const GlobalStyle = () => (
     .pc-crop .cc2::before, .pc-crop .cc2::after { content: ''; position: absolute; width: 10px; height: 10px; border-color: var(--navy); }
     .pc-crop::before { top: -1px; left: -1px; border-top: 2px solid var(--navy); border-left: 2px solid var(--navy); }
     .pc-crop::after { top: -1px; right: -1px; border-top: 2px solid var(--navy); border-right: 2px solid var(--navy); }
-    .pc-crop .cc2 { position: absolute; inset: 0; }
+    .pc-crop .cc2 { position: absolute; inset: 0; pointer-events: none; }
     .pc-crop .cc2::before { bottom: -1px; left: -1px; top: auto; border-bottom: 2px solid var(--navy); border-left: 2px solid var(--navy); }
     .pc-crop .cc2::after { bottom: -1px; right: -1px; top: auto; border-bottom: 2px solid var(--navy); border-right: 2px solid var(--navy); }
 
